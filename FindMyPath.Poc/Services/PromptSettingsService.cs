@@ -5,8 +5,10 @@ using Microsoft.Extensions.Configuration;
 namespace FindMyPath.Poc.Services;
 
 /// <summary>
-/// Loads and persists tunable settings (system instruction, model, reference material, API key)
-/// to the app-data settings.json. Never crashes on read/write; falls back to defaults.
+/// Runtime tuning (system instruction, model, reference material) persisted to the project-relative
+/// <c>app_data/settings.json</c>. Defaults come from configuration (Anthropic:Model / Anthropic:SystemInstruction
+/// / Anthropic:ReferenceMaterial) with built-in fallbacks. The API key is read from configuration only
+/// (Anthropic:ApiKey, or the ANTHROPIC_API_KEY env var) — it is never written to app_data. Never crashes on I/O.
 /// </summary>
 public class PromptSettingsService
 {
@@ -18,11 +20,13 @@ public class PromptSettingsService
 
     private readonly object _lock = new();
     private readonly IConfiguration _config;
+    private readonly AppPaths _paths;
     private PromptSettings _settings;
 
-    public PromptSettingsService(IConfiguration config)
+    public PromptSettingsService(IConfiguration config, AppPaths paths)
     {
         _config = config;
+        _paths = paths;
         _settings = Load();
     }
 
@@ -31,22 +35,13 @@ public class PromptSettingsService
         get { lock (_lock) { return Clone(_settings); } }
     }
 
-    /// <summary>API key from the settings file, falling back to the ANTHROPIC_API_KEY environment variable.</summary>
+    /// <summary>API key from configuration (Anthropic:ApiKey), falling back to the ANTHROPIC_API_KEY env var.</summary>
     public string? ApiKey
     {
         get
         {
-            // 1) appsettings.json (Anthropic:ApiKey) - the primary place to put the key.
             var fromConfig = _config["Anthropic:ApiKey"];
             if (!string.IsNullOrWhiteSpace(fromConfig)) return fromConfig;
-
-            // 2) app-data settings.json (fallback).
-            lock (_lock)
-            {
-                if (!string.IsNullOrWhiteSpace(_settings.ApiKey)) return _settings.ApiKey;
-            }
-
-            // 3) ANTHROPIC_API_KEY environment variable (fallback).
             return Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
         }
     }
@@ -57,9 +52,8 @@ public class PromptSettingsService
     {
         lock (_lock)
         {
-            _settings.SystemInstruction = string.IsNullOrWhiteSpace(systemInstruction)
-                ? DefaultPrompt.SystemInstruction : systemInstruction;
-            _settings.Model = string.IsNullOrWhiteSpace(model) ? ModelCatalog.DefaultModel : model;
+            _settings.SystemInstruction = string.IsNullOrWhiteSpace(systemInstruction) ? DefaultSystem() : systemInstruction;
+            _settings.Model = string.IsNullOrWhiteSpace(model) ? DefaultModel() : model;
             _settings.ReferenceMaterial = referenceMaterial ?? "";
             Persist();
         }
@@ -69,36 +63,51 @@ public class PromptSettingsService
     {
         lock (_lock)
         {
-            _settings.SystemInstruction = DefaultPrompt.SystemInstruction;
+            _settings.SystemInstruction = DefaultSystem();
             Persist();
             return _settings.SystemInstruction;
         }
     }
 
+    private string DefaultModel()
+    {
+        var m = _config["Anthropic:Model"];
+        return string.IsNullOrWhiteSpace(m) ? ModelCatalog.DefaultModel : m;
+    }
+
+    private string DefaultSystem()
+    {
+        var s = _config["Anthropic:SystemInstruction"];
+        return string.IsNullOrWhiteSpace(s) ? DefaultPrompt.SystemInstruction : s;
+    }
+
+    private string DefaultReference() => _config["Anthropic:ReferenceMaterial"] ?? "";
+
     private PromptSettings Load()
     {
         try
         {
-            AppPaths.EnsureDirs();
-            if (File.Exists(AppPaths.SettingsFile))
+            _paths.EnsureDirs();
+            if (File.Exists(_paths.SettingsFile))
             {
-                var s = JsonSerializer.Deserialize<PromptSettings>(File.ReadAllText(AppPaths.SettingsFile), JsonOpts);
+                var s = JsonSerializer.Deserialize<PromptSettings>(File.ReadAllText(_paths.SettingsFile), JsonOpts);
                 if (s is not null)
                 {
-                    if (string.IsNullOrWhiteSpace(s.SystemInstruction)) s.SystemInstruction = DefaultPrompt.SystemInstruction;
-                    if (string.IsNullOrWhiteSpace(s.Model)) s.Model = ModelCatalog.DefaultModel;
+                    if (string.IsNullOrWhiteSpace(s.SystemInstruction)) s.SystemInstruction = DefaultSystem();
+                    if (string.IsNullOrWhiteSpace(s.Model)) s.Model = DefaultModel();
                     return s;
                 }
             }
         }
         catch
         {
-            // fall through to defaults
+            // fall through to config-seeded defaults
         }
         return new PromptSettings
         {
-            SystemInstruction = DefaultPrompt.SystemInstruction,
-            Model = ModelCatalog.DefaultModel
+            Model = DefaultModel(),
+            SystemInstruction = DefaultSystem(),
+            ReferenceMaterial = DefaultReference(),
         };
     }
 
@@ -106,8 +115,8 @@ public class PromptSettingsService
     {
         try
         {
-            AppPaths.EnsureDirs();
-            File.WriteAllText(AppPaths.SettingsFile, JsonSerializer.Serialize(_settings, JsonOpts));
+            _paths.EnsureDirs();
+            File.WriteAllText(_paths.SettingsFile, JsonSerializer.Serialize(_settings, JsonOpts));
         }
         catch
         {
@@ -117,7 +126,6 @@ public class PromptSettingsService
 
     private static PromptSettings Clone(PromptSettings s) => new()
     {
-        ApiKey = s.ApiKey,
         Model = s.Model,
         SystemInstruction = s.SystemInstruction,
         ReferenceMaterial = s.ReferenceMaterial

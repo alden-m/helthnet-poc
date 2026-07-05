@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddSingleton<AppPaths>();
 builder.Services.AddSingleton<PromptSettingsService>();
 builder.Services.AddSingleton<HistoryService>();
 builder.Services.AddSingleton<RoadmapService>();

@@ -485,3 +485,7 @@ $RECYCLE.BIN/
 .playwright-mcp/
 /*.png
 
+
+# Runtime data (settings tuning + history snapshots)
+FindMyPath.Poc/app_data/
+

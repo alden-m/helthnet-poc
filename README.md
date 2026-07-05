@@ -32,23 +32,38 @@ Three tabs in the sidebar:
 
 ## The API key (never committed)
 
-The key is read from a JSON settings file under your app-data folder, **not** from the repo:
+The key comes from **configuration**, read as `Anthropic:ApiKey`.
 
-```
-%APPDATA%\FindMyPath\settings.json      (Windows)
-~/.config/FindMyPath/settings.json      (Linux/macOS – ApplicationData folder)
-```
+- **Local dev** — put it in `FindMyPath.Poc/appsettings.json`:
 
-```json
-{
-  "apiKey": "sk-ant-...",
-  "model": "claude-opus-4-8",
-  "systemInstruction": ""
-}
-```
+  ```json
+  {
+    "Anthropic": {
+      "ApiKey": "sk-ant-...",
+      "Model": "claude-opus-4-8"
+    }
+  }
+  ```
 
-As a fallback, if `apiKey` is absent the app reads the `ANTHROPIC_API_KEY` environment variable. The key is
-never written to the repository, and history snapshots never include it.
+  The committed `appsettings.json` ships with an **empty** `ApiKey`. The local copy is flagged
+  `git update-index --skip-worktree`, so your real key is never staged or pushed. (You can also set the
+  `ANTHROPIC_API_KEY` environment variable instead — it's used as a fallback.)
+
+- **Azure App Service** — do **not** put the key in the repo. Set it under
+  **Configuration → Application settings** as `Anthropic__ApiKey` (double underscore maps to the `:`
+  separator). The same code reads it.
+
+The key is never written to `app_data` and never appears in history snapshots.
+
+## Persistence
+
+Runtime data is stored as JSON in a **project-relative** `FindMyPath.Poc/app_data/` folder (gitignored):
+
+- `app_data/settings.json` — the Settings-tab tuning (system instruction, model, reference material).
+- `app_data/history/*.json` — one snapshot per generation (answers + phases + cost + prompt + model).
+
+This folder lives under the app's content root, so it travels and persists with the app on Azure App
+Service — unlike the OS roaming app-data folder, which is ephemeral there.
 
 ## Run it
 
