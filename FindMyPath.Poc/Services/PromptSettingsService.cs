@@ -6,9 +6,10 @@ namespace FindMyPath.Poc.Services;
 
 /// <summary>
 /// Runtime tuning (system instruction, model, reference material) persisted to the project-relative
-/// <c>app_data/settings.json</c>. Defaults come from configuration (Anthropic:Model / Anthropic:SystemInstruction
-/// / Anthropic:ReferenceMaterial) with built-in fallbacks. The API key is read from configuration only
-/// (Anthropic:ApiKey, or the ANTHROPIC_API_KEY env var) — it is never written to app_data. Never crashes on I/O.
+/// <c>app_data/settings.json</c>. Defaults come from code — <see cref="DefaultPrompt.SystemInstruction"/> and
+/// <see cref="ModelCatalog.DefaultModel"/> — not from appsettings.json. The only thing read from configuration
+/// is the API key (Anthropic:ApiKey, or the ANTHROPIC_API_KEY env var); it is never written to app_data.
+/// Never crashes on I/O.
 /// </summary>
 public class PromptSettingsService
 {
@@ -69,19 +70,12 @@ public class PromptSettingsService
         }
     }
 
-    private string DefaultModel()
-    {
-        var m = _config["Anthropic:Model"];
-        return string.IsNullOrWhiteSpace(m) ? ModelCatalog.DefaultModel : m;
-    }
+    // Defaults are code, not configuration: appsettings.json holds only the API key.
+    private static string DefaultModel() => ModelCatalog.DefaultModel;
 
-    private string DefaultSystem()
-    {
-        var s = _config["Anthropic:SystemInstruction"];
-        return string.IsNullOrWhiteSpace(s) ? DefaultPrompt.SystemInstruction : s;
-    }
+    private static string DefaultSystem() => DefaultPrompt.SystemInstruction;
 
-    private string DefaultReference() => _config["Anthropic:ReferenceMaterial"] ?? "";
+    private static string DefaultReference() => "";
 
     private PromptSettings Load()
     {
@@ -101,7 +95,7 @@ public class PromptSettingsService
         }
         catch
         {
-            // fall through to config-seeded defaults
+            // fall through to code defaults
         }
         return new PromptSettings
         {

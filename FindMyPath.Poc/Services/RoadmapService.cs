@@ -32,8 +32,8 @@ public class RoadmapService
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             result.Success = false;
-            result.ErrorMessage = "The API key is missing. Add it to the app settings file " +
-                                  "(%APPDATA%\\FindMyPath\\settings.json) or set the ANTHROPIC_API_KEY environment variable.";
+            result.ErrorMessage = "The API key is missing. Add it to appsettings.json (Anthropic:ApiKey) " +
+                                  "or set the ANTHROPIC_API_KEY environment variable.";
             return result;
         }
 
@@ -97,8 +97,8 @@ public class RoadmapService
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             result.Success = false;
-            result.ErrorMessage = "The API key is missing. Add it to the app settings file " +
-                                  "(%APPDATA%\\FindMyPath\\settings.json) or set the ANTHROPIC_API_KEY environment variable.";
+            result.ErrorMessage = "The API key is missing. Add it to appsettings.json (Anthropic:ApiKey) " +
+                                  "or set the ANTHROPIC_API_KEY environment variable.";
             return result;
         }
 
@@ -174,7 +174,7 @@ public class RoadmapService
     {
         var msg = (ex.Message ?? "").ToLowerInvariant();
         if (msg.Contains("401") || msg.Contains("authentication") || msg.Contains("api key") || msg.Contains("x-api-key") || msg.Contains("unauthorized"))
-            return "The API key appears to be missing or invalid. Check %APPDATA%\\FindMyPath\\settings.json.";
+            return "The API key appears to be missing or invalid. Check appsettings.json (Anthropic:ApiKey) or the ANTHROPIC_API_KEY environment variable.";
         if (msg.Contains("429") || msg.Contains("rate limit") || msg.Contains("overload"))
             return "The AI service is busy right now. Please wait a moment and try again.";
         if (msg.Contains("timeout") || msg.Contains("timed out") || msg.Contains("canceled"))
