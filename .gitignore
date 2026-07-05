@@ -480,3 +480,8 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Local verification artifacts (Playwright MCP)
+.playwright-mcp/
+/*.png
+
