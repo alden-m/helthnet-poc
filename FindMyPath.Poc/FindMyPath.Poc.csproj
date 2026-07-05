@@ -7,4 +7,8 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Anthropic" Version="12.35.1" />
+  </ItemGroup>
+
 </Project>
