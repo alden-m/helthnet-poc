@@ -4,167 +4,222 @@
 <PageTitle>Find My Path</PageTitle>
 
 <div class="wizard-shell">
-    <div class="progress-card">
-        <div class="progress-head">
-            <span class="progress-step">Step @CurrentStep of @TotalSteps</span>
-            <span class="progress-percent">@PercentComplete% Complete</span>
+    @if (CurrentStep <= TotalSteps)
+    {
+        <div class="progress-card">
+            <div class="progress-head">
+                <span class="progress-step">Step @CurrentStep of @TotalSteps</span>
+                <span class="progress-percent">@PercentComplete% Complete</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" style="width:@PercentComplete%"></div>
+            </div>
         </div>
-        <div class="progress-track">
-            <div class="progress-fill" style="width:@PercentComplete%"></div>
-        </div>
-    </div>
 
-    <div class="section-card">
-        <h1 class="section-title">@SectionTitles[CurrentStep - 1]</h1>
+        <div class="section-card">
+            <h1 class="section-title">@SectionTitles[CurrentStep - 1]</h1>
 
-        @switch (CurrentStep)
-        {
-            case 1:
-                <div class="question">
-                    <label class="question-label">What is your healthcare profession?</label>
-                    <SelectInput @bind-Value="Answers.Profession" Options="OptionCatalog.Professions" Placeholder="Select your profession" />
-                </div>
-                <div class="question">
-                    <label class="question-label">In which country did you receive your professional qualification?</label>
-                    <SelectInput @bind-Value="Answers.QualificationCountry" Options="OptionCatalog.Countries" Placeholder="Select country" />
-                </div>
-                <div class="question">
-                    <label class="question-label">Have you completed your internship or residency (if applicable)?</label>
-                    <RadioListGroup @bind-Value="Answers.CompletedInternship" Options="YesNo" TwoCol="true" />
-                </div>
-                <div class="question">
-                    <label class="question-label">How many years of clinical experience do you have?</label>
-                    <SelectInput @bind-Value="Answers.YearsExperience" Options="OptionCatalog.YearsExperience" Placeholder="Select years of experience" />
-                </div>
-                break;
-
-            case 2:
-                var canadaCls = Answers.Location == "Canada" ? "option-card selected" : "option-card";
-                var outsideCls = Answers.Location == "Outside Canada" ? "option-card selected" : "option-card";
-                <div class="question">
-                    <label class="question-label">Where are you currently living?</label>
-                    <div class="option-grid cols-2">
-                        <label class="@canadaCls">
-                            <input type="radio" name="loc" checked="@(Answers.Location == "Canada")" @onchange="SetCanada" />
-                            <svg class="option-icon" viewBox="0 0 16 16" style="fill:var(--brand)" aria-hidden="true"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6"/></svg>
-                            <span>Inside Canada</span>
-                        </label>
-                        <label class="@outsideCls">
-                            <input type="radio" name="loc" checked="@(Answers.Location == "Outside Canada")" @onchange="SetOutside" />
-                            <svg class="option-icon" viewBox="0 0 16 16" style="fill:#ea580c" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m7.5-6.923c-.67.204-1.335.82-1.887 1.855A8 8 0 0 0 5.145 4H7.5zM4.09 4a9.3 9.3 0 0 1 .64-1.539 7 7 0 0 1 .597-.933A7.03 7.03 0 0 0 2.255 4zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a7 7 0 0 0-.656 2.5zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5zM8.5 5v2.5h2.99a12.5 12.5 0 0 0-.337-2.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5zm3.99 0V11h2.653c.187-.766.306-1.608.338-2.5zM5.145 12q.208.58.468 1.068c.552 1.035 1.218 1.65 1.887 1.855V12zm.182 2.472a7 7 0 0 1-.597-.933A9.3 9.3 0 0 1 4.09 12H2.255a7 7 0 0 0 3.072 2.472M3.82 11a13.7 13.7 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5zm6.853 3.472A7 7 0 0 0 13.745 12H11.91a9.3 9.3 0 0 1-.64 1.539 7 7 0 0 1-.597.933M8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855q.26-.487.468-1.068zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.7 13.7 0 0 1-.312 2.5m2.802-3.5a7 7 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7 7 0 0 0-3.072-2.472c.218.284.418.598.597.933M10.855 4a8 8 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4z"/></svg>
-                            <span>Outside Canada</span>
-                        </label>
+            @switch (CurrentStep)
+            {
+                case 1:
+                    <div class="sample-profiles">
+                        <span class="sample-label">Try a sample profile:</span>
+                        <button class="sample-btn" @onclick="LoadPersonaA">Physician from Egypt</button>
+                        <button class="sample-btn" @onclick="LoadPersonaB">Nurse in Ontario</button>
+                        <button class="sample-btn" @onclick="LoadPersonaC">Pharmacist from India</button>
                     </div>
-                </div>
+                    <div class="question">
+                        <label class="question-label">What is your healthcare profession?</label>
+                        <SelectInput @bind-Value="Answers.Profession" Options="OptionCatalog.Professions" Placeholder="Select your profession" />
+                    </div>
+                    <div class="question">
+                        <label class="question-label">In which country did you receive your professional qualification?</label>
+                        <SelectInput @bind-Value="Answers.QualificationCountry" Options="OptionCatalog.Countries" Placeholder="Select country" />
+                    </div>
+                    <div class="question">
+                        <label class="question-label">Have you completed your internship or residency (if applicable)?</label>
+                        <RadioListGroup @bind-Value="Answers.CompletedInternship" Options="YesNo" TwoCol="true" />
+                    </div>
+                    <div class="question">
+                        <label class="question-label">How many years of clinical experience do you have?</label>
+                        <SelectInput @bind-Value="Answers.YearsExperience" Options="OptionCatalog.YearsExperience" Placeholder="Select years of experience" />
+                    </div>
+                    break;
 
-                @if (Answers.Location == "Canada")
+                case 2:
+                    var canadaCls = Answers.Location == "Canada" ? "option-card selected" : "option-card";
+                    var outsideCls = Answers.Location == "Outside Canada" ? "option-card selected" : "option-card";
+                    <div class="question">
+                        <label class="question-label">Where are you currently living?</label>
+                        <div class="option-grid cols-2">
+                            <label class="@canadaCls">
+                                <input type="radio" name="loc" checked="@(Answers.Location == "Canada")" @onchange="SetCanada" />
+                                <svg class="option-icon" viewBox="0 0 16 16" style="fill:var(--brand)" aria-hidden="true"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6"/></svg>
+                                <span>Inside Canada</span>
+                            </label>
+                            <label class="@outsideCls">
+                                <input type="radio" name="loc" checked="@(Answers.Location == "Outside Canada")" @onchange="SetOutside" />
+                                <svg class="option-icon" viewBox="0 0 16 16" style="fill:#ea580c" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m7.5-6.923c-.67.204-1.335.82-1.887 1.855A8 8 0 0 0 5.145 4H7.5zM4.09 4a9.3 9.3 0 0 1 .64-1.539 7 7 0 0 1 .597-.933A7.03 7.03 0 0 0 2.255 4zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a7 7 0 0 0-.656 2.5zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5zM8.5 5v2.5h2.99a12.5 12.5 0 0 0-.337-2.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5zm3.99 0V11h2.653c.187-.766.306-1.608.338-2.5zM5.145 12q.208.58.468 1.068c.552 1.035 1.218 1.65 1.887 1.855V12zm.182 2.472a7 7 0 0 1-.597-.933A9.3 9.3 0 0 1 4.09 12H2.255a7 7 0 0 0 3.072 2.472M3.82 11a13.7 13.7 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5zm6.853 3.472A7 7 0 0 0 13.745 12H11.91a9.3 9.3 0 0 1-.64 1.539 7 7 0 0 1-.597.933M8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855q.26-.487.468-1.068zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.7 13.7 0 0 1-.312 2.5m2.802-3.5a7 7 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7 7 0 0 0-3.072-2.472c.218.284.418.598.597.933M10.855 4a8 8 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4z"/></svg>
+                                <span>Outside Canada</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    @if (Answers.Location == "Canada")
+                    {
+                        <div class="question">
+                            <label class="question-label">Province</label>
+                            <SelectInput @bind-Value="Answers.Province" Options="OptionCatalog.Provinces" Placeholder="Select province" />
+                        </div>
+                        <div class="question">
+                            <label class="question-label">City</label>
+                            <input class="fmp-input" maxlength="255" placeholder="City" @bind="Answers.City" @bind:event="oninput" />
+                        </div>
+                    }
+                    else if (Answers.Location == "Outside Canada")
+                    {
+                        <div class="question">
+                            <label class="question-label">Country</label>
+                            <SelectInput @bind-Value="Answers.Country" Options="OptionCatalog.Countries" Placeholder="Select country" />
+                        </div>
+                    }
+
+                    <div class="question">
+                        <label class="question-label">Which province do you plan to practise in?</label>
+                        <SelectInput @bind-Value="Answers.TargetProvince" Options="OptionCatalog.TargetProvinces" Placeholder="Select province" />
+                    </div>
+                    break;
+
+                case 3:
+                    @if (Answers.Location == "Canada")
+                    {
+                        <div class="question">
+                            <label class="question-label">What is your current immigration status?</label>
+                            <RadioListGroup @bind-Value="Answers.ImmigrationStatus" Options="OptionCatalog.ImmigrationStatuses" TwoCol="true" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="question">
+                            <label class="question-label">Are you planning to immigrate to Canada?</label>
+                            <RadioListGroup @bind-Value="Answers.PlanningToImmigrate" Options="ImmigratePlans" />
+                        </div>
+                    }
+                    break;
+
+                case 4:
+                    <div class="question">
+                        <label class="question-label">Have you started your licensing process?</label>
+                        <RadioListGroup @bind-Value="Answers.LicensingStarted" Options="YesNo" TwoCol="true" />
+                    </div>
+                    <div class="question">
+                        <label class="question-label">Which licensing exams have you completed?</label>
+                        <CheckboxGroup @bind-Selected="Answers.ExamsCompleted" Options="OptionCatalog.Exams" ExclusiveOption="None" TwoCol="true" />
+                    </div>
+                    <div class="question">
+                        <label class="question-label">Are you currently registered with any Canadian regulatory body?</label>
+                        <RadioListGroup @bind-Value="Answers.RegisteredWithBody" Options="YesNo" TwoCol="true" />
+                    </div>
+                    break;
+
+                case 5:
+                    <div class="question">
+                        <label class="question-label">Have you completed an English language test?</label>
+                        <RadioListGroup Value="Answers.CompletedLanguageTest" ValueChanged="OnLanguageTestChanged" Options="YesNo" TwoCol="true" />
+                    </div>
+                    @if (Answers.CompletedLanguageTest == "Yes")
+                    {
+                        <div class="question">
+                            <label class="question-label">Which test?</label>
+                            <RadioListGroup @bind-Value="Answers.LanguageTest" Options="OptionCatalog.LanguageTests" TwoCol="true" />
+                        </div>
+                        <div class="question">
+                            <label class="question-label">Score <span class="label-optional">(optional)</span></label>
+                            <input class="fmp-input" placeholder="e.g., 7.5 for IELTS" @bind="Answers.LanguageScore" @bind:event="oninput" />
+                        </div>
+                    }
+                    break;
+
+                case 6:
+                    <div class="question">
+                        <label class="question-label">What is your primary goal? <span class="label-optional">(select all that apply)</span></label>
+                        <CheckboxGroup @bind-Selected="Answers.Goals" Options="OptionCatalog.Goals" />
+                    </div>
+                    break;
+
+                case 7:
+                    <div class="question">
+                        <label class="question-label">Which areas would you like support with? <span class="label-optional">(select all that apply)</span></label>
+                        <CheckboxGroup @bind-Selected="Answers.LearningNeeds" Options="OptionCatalog.LearningNeeds" TwoCol="true" />
+                    </div>
+                    break;
+
+                case 8:
+                    <div class="question">
+                        <label class="question-label">Is there anything else you would like HealthNet to know to better personalise your learning experience? <span class="label-optional">(optional)</span></label>
+                        <textarea class="fmp-input" maxlength="1000" rows="6" placeholder="E.g., specific concerns about your pathway, timeline constraints, previous exam attempts, or any other relevant information..." @bind="Answers.AdditionalInfo" @bind:event="oninput"></textarea>
+                        <div class="hint char-counter">@(Answers.AdditionalInfo?.Length ?? 0) / 1000</div>
+                    </div>
+                    break;
+            }
+
+            <div class="wizard-divider"></div>
+            @if (!IsStepValid(CurrentStep))
+            {
+                <p class="validation-note">Please answer all required questions to continue.</p>
+            }
+            <div class="wizard-nav">
+                <button class="btn-prev" disabled="@(CurrentStep == 1)" @onclick="Previous">Previous</button>
+                @if (CurrentStep < TotalSteps)
                 {
-                    <div class="question">
-                        <label class="question-label">Province</label>
-                        <SelectInput @bind-Value="Answers.Province" Options="OptionCatalog.Provinces" Placeholder="Select province" />
-                    </div>
-                    <div class="question">
-                        <label class="question-label">City</label>
-                        <input class="fmp-input" maxlength="255" placeholder="City" @bind="Answers.City" @bind:event="oninput" />
-                    </div>
-                }
-                else if (Answers.Location == "Outside Canada")
-                {
-                    <div class="question">
-                        <label class="question-label">Country</label>
-                        <SelectInput @bind-Value="Answers.Country" Options="OptionCatalog.Countries" Placeholder="Select country" />
-                    </div>
-                }
-
-                <div class="question">
-                    <label class="question-label">Which province do you plan to practise in?</label>
-                    <SelectInput @bind-Value="Answers.TargetProvince" Options="OptionCatalog.TargetProvinces" Placeholder="Select province" />
-                </div>
-                break;
-
-            case 3:
-                @if (Answers.Location == "Canada")
-                {
-                    <div class="question">
-                        <label class="question-label">What is your current immigration status?</label>
-                        <RadioListGroup @bind-Value="Answers.ImmigrationStatus" Options="OptionCatalog.ImmigrationStatuses" TwoCol="true" />
-                    </div>
+                    <button class="btn-next" disabled="@(!IsStepValid(CurrentStep))" @onclick="Next">Next &rsaquo;</button>
                 }
                 else
                 {
-                    <div class="question">
-                        <label class="question-label">Are you planning to immigrate to Canada?</label>
-                        <RadioListGroup @bind-Value="Answers.PlanningToImmigrate" Options="ImmigratePlans" />
-                    </div>
+                    <button class="btn-next" disabled="@(!IsStepValid(CurrentStep))" @onclick="GoToReview">Review &rsaquo;</button>
                 }
-                break;
-
-            case 4:
-                <div class="question">
-                    <label class="question-label">Have you started your licensing process?</label>
-                    <RadioListGroup @bind-Value="Answers.LicensingStarted" Options="YesNo" TwoCol="true" />
-                </div>
-                <div class="question">
-                    <label class="question-label">Which licensing exams have you completed?</label>
-                    <CheckboxGroup @bind-Selected="Answers.ExamsCompleted" Options="OptionCatalog.Exams" ExclusiveOption="None" TwoCol="true" />
-                </div>
-                <div class="question">
-                    <label class="question-label">Are you currently registered with any Canadian regulatory body?</label>
-                    <RadioListGroup @bind-Value="Answers.RegisteredWithBody" Options="YesNo" TwoCol="true" />
-                </div>
-                break;
-
-            case 5:
-                <div class="question">
-                    <label class="question-label">Have you completed an English language test?</label>
-                    <RadioListGroup Value="Answers.CompletedLanguageTest" ValueChanged="OnLanguageTestChanged" Options="YesNo" TwoCol="true" />
-                </div>
-                @if (Answers.CompletedLanguageTest == "Yes")
-                {
-                    <div class="question">
-                        <label class="question-label">Which test?</label>
-                        <RadioListGroup @bind-Value="Answers.LanguageTest" Options="OptionCatalog.LanguageTests" TwoCol="true" />
-                    </div>
-                    <div class="question">
-                        <label class="question-label">Score <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
-                        <input class="fmp-input" placeholder="e.g., 7.5 for IELTS" @bind="Answers.LanguageScore" @bind:event="oninput" />
-                    </div>
-                }
-                break;
-            case 6:
-                <p class="text-muted">Career goals questions go here.</p>
-                break;
-            case 7:
-                <p class="text-muted">Learning needs questions go here.</p>
-                break;
-            case 8:
-                <p class="text-muted">Additional information goes here.</p>
-                break;
-        }
-
-        <div class="wizard-divider"></div>
-        @if (!IsStepValid(CurrentStep))
-        {
-            <p class="validation-note">Please answer all required questions to continue.</p>
-        }
-        <div class="wizard-nav">
-            <button class="btn-prev" disabled="@(CurrentStep == 1)" @onclick="Previous">Previous</button>
-            @if (CurrentStep < TotalSteps)
-            {
-                <button class="btn-next" disabled="@(!IsStepValid(CurrentStep))" @onclick="Next">Next &rsaquo;</button>
-            }
-            else
-            {
-                <button class="btn-generate" disabled>Review &rsaquo;</button>
-            }
+            </div>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="section-card">
+            <h1 class="section-title">Review your answers</h1>
+            <p class="review-intro">Please review your responses before generating your personalised pathway. You can edit any section.</p>
+
+            @foreach (var group in BuildSummary())
+            {
+                <div class="review-group">
+                    <div class="review-group-head">
+                        <h2 class="review-group-title">@group.Title</h2>
+                        <button class="review-edit" @onclick="@(() => EditSection(group.Step))">Edit</button>
+                    </div>
+                    <dl class="review-items">
+                        @foreach (var item in group.Items)
+                        {
+                            <div class="review-row">
+                                <dt>@item.Question</dt>
+                                <dd>@item.Answer</dd>
+                            </div>
+                        }
+                    </dl>
+                </div>
+            }
+
+            <div class="wizard-divider"></div>
+            <div class="wizard-nav">
+                <button class="btn-prev" @onclick="BackToLastStep">Previous</button>
+                <button class="btn-generate" @onclick="StartGenerate">Generate My Pathway &rsaquo;</button>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
     private readonly AssessmentAnswers Answers = new();
     private int CurrentStep = 1;
     private const int TotalSteps = 8;
+    private const int ReviewStep = 9;
 
     private static readonly string[] YesNo = { "Yes", "No" };
     private static readonly string[] ImmigratePlans = { "Yes", "No", "Undecided" };
@@ -214,6 +269,9 @@
              && NotEmpty(Answers.RegisteredWithBody),
         5 => NotEmpty(Answers.CompletedLanguageTest)
              && (Answers.CompletedLanguageTest != "Yes" || NotEmpty(Answers.LanguageTest)),
+        6 => Answers.Goals.Count > 0,
+        7 => Answers.LearningNeeds.Count > 0,
+        8 => true,
         _ => true
     };
 
@@ -225,5 +283,169 @@
     private void Previous()
     {
         if (CurrentStep > 1) CurrentStep--;
+    }
+
+    private void GoToReview()
+    {
+        if (IsStepValid(TotalSteps)) CurrentStep = ReviewStep;
+    }
+
+    private void BackToLastStep() => CurrentStep = TotalSteps;
+
+    private void EditSection(int step) => CurrentStep = step;
+
+    private void StartGenerate()
+    {
+        // Wired to the Claude API in the generate step.
+    }
+
+    private void ResetAnswers()
+    {
+        Answers.Profession = null;
+        Answers.QualificationCountry = null;
+        Answers.CompletedInternship = null;
+        Answers.YearsExperience = null;
+        Answers.Location = null;
+        Answers.Province = null;
+        Answers.City = null;
+        Answers.Country = null;
+        Answers.TargetProvince = null;
+        Answers.ImmigrationStatus = null;
+        Answers.PlanningToImmigrate = null;
+        Answers.LicensingStarted = null;
+        Answers.ExamsCompleted = new();
+        Answers.RegisteredWithBody = null;
+        Answers.CompletedLanguageTest = null;
+        Answers.LanguageTest = null;
+        Answers.LanguageScore = null;
+        Answers.Goals = new();
+        Answers.LearningNeeds = new();
+        Answers.AdditionalInfo = null;
+    }
+
+    private void LoadPersonaA()
+    {
+        ResetAnswers();
+        Answers.Profession = "Physician";
+        Answers.QualificationCountry = "Egypt";
+        Answers.CompletedInternship = "Yes";
+        Answers.YearsExperience = "8+ years";
+        Answers.Location = "Outside Canada";
+        Answers.Country = "Egypt";
+        Answers.TargetProvince = "Ontario";
+        Answers.PlanningToImmigrate = "Yes";
+        Answers.LicensingStarted = "Yes";
+        Answers.ExamsCompleted = new() { "MCCQE Part I", "IELTS" };
+        Answers.RegisteredWithBody = "No";
+        Answers.CompletedLanguageTest = "Yes";
+        Answers.LanguageTest = "IELTS";
+        Answers.LanguageScore = "7.5";
+        Answers.Goals = new() { "Obtain professional licence", "Practise in Canada", "Prepare for examinations" };
+        Answers.LearningNeeds = new() { "Canadian Healthcare System", "Exam Preparation", "Interview Preparation" };
+        Answers.AdditionalInfo = "I completed my MBBCh in Cairo in 2014 and have worked in internal medicine since. I am aiming to settle in Ontario.";
+        CurrentStep = ReviewStep;
+    }
+
+    private void LoadPersonaB()
+    {
+        ResetAnswers();
+        Answers.Profession = "Nurse";
+        Answers.QualificationCountry = "Philippines";
+        Answers.CompletedInternship = "Yes";
+        Answers.YearsExperience = "4-7 years";
+        Answers.Location = "Canada";
+        Answers.Province = "Ontario";
+        Answers.City = "Toronto";
+        Answers.TargetProvince = "Ontario";
+        Answers.ImmigrationStatus = "Work Permit";
+        Answers.LicensingStarted = "No";
+        Answers.ExamsCompleted = new() { "None" };
+        Answers.RegisteredWithBody = "No";
+        Answers.CompletedLanguageTest = "Yes";
+        Answers.LanguageTest = "CELBAN";
+        Answers.LanguageScore = "Advanced";
+        Answers.Goals = new() { "Obtain professional licence", "Find employment" };
+        Answers.LearningNeeds = new() { "Canadian Healthcare System", "Documentation", "Resume Development", "Cultural Competence" };
+        Answers.AdditionalInfo = "I have a BSN and 5 years of hospital experience in Manila. Currently working as a personal support worker while I sort out my licensing.";
+        CurrentStep = ReviewStep;
+    }
+
+    private void LoadPersonaC()
+    {
+        ResetAnswers();
+        Answers.Profession = "Pharmacist";
+        Answers.QualificationCountry = "India";
+        Answers.CompletedInternship = "No";
+        Answers.YearsExperience = "1-3 years";
+        Answers.Location = "Outside Canada";
+        Answers.Country = "India";
+        Answers.TargetProvince = "Not sure yet";
+        Answers.PlanningToImmigrate = "Undecided";
+        Answers.LicensingStarted = "No";
+        Answers.ExamsCompleted = new() { "None" };
+        Answers.RegisteredWithBody = "No";
+        Answers.CompletedLanguageTest = "No";
+        Answers.Goals = new() { "Explore alternative careers", "Improve communication skills", "Build professional network" };
+        Answers.LearningNeeds = new() { "Career Planning", "Communication Skills", "Emotional Intelligence" };
+        CurrentStep = ReviewStep;
+    }
+
+    private record SummaryItem(string Question, string Answer);
+    private record SummaryGroup(string Title, int Step, List<SummaryItem> Items);
+
+    private static void Add(List<SummaryItem> list, string question, string? answer)
+    {
+        if (!string.IsNullOrWhiteSpace(answer)) list.Add(new SummaryItem(question, answer));
+    }
+
+    private List<SummaryGroup> BuildSummary()
+    {
+        var groups = new List<SummaryGroup>();
+
+        var s1 = new List<SummaryItem>();
+        Add(s1, "Healthcare profession", Answers.Profession);
+        Add(s1, "Country of qualification", Answers.QualificationCountry);
+        Add(s1, "Completed internship/residency", Answers.CompletedInternship);
+        Add(s1, "Years of clinical experience", Answers.YearsExperience);
+        groups.Add(new SummaryGroup("Professional Background", 1, s1));
+
+        var s2 = new List<SummaryItem>();
+        Add(s2, "Currently living", Answers.Location);
+        Add(s2, "Province", Answers.Province);
+        Add(s2, "City", Answers.City);
+        Add(s2, "Country", Answers.Country);
+        Add(s2, "Target province", Answers.TargetProvince);
+        groups.Add(new SummaryGroup("Current Location", 2, s2));
+
+        var s3 = new List<SummaryItem>();
+        Add(s3, "Immigration status", Answers.ImmigrationStatus);
+        Add(s3, "Planning to immigrate to Canada", Answers.PlanningToImmigrate);
+        groups.Add(new SummaryGroup("Immigration Status", 3, s3));
+
+        var s4 = new List<SummaryItem>();
+        Add(s4, "Started licensing process", Answers.LicensingStarted);
+        Add(s4, "Exams completed", Answers.ExamsCompleted.Count > 0 ? string.Join(", ", Answers.ExamsCompleted) : null);
+        Add(s4, "Registered with a Canadian regulatory body", Answers.RegisteredWithBody);
+        groups.Add(new SummaryGroup("Licensing Status", 4, s4));
+
+        var s5 = new List<SummaryItem>();
+        Add(s5, "Completed an English language test", Answers.CompletedLanguageTest);
+        Add(s5, "Test", Answers.LanguageTest);
+        Add(s5, "Score", Answers.LanguageScore);
+        groups.Add(new SummaryGroup("Language Proficiency", 5, s5));
+
+        var s6 = new List<SummaryItem>();
+        Add(s6, "Primary goals", Answers.Goals.Count > 0 ? string.Join(", ", Answers.Goals) : null);
+        groups.Add(new SummaryGroup("Career Goals", 6, s6));
+
+        var s7 = new List<SummaryItem>();
+        Add(s7, "Support areas", Answers.LearningNeeds.Count > 0 ? string.Join(", ", Answers.LearningNeeds) : null);
+        groups.Add(new SummaryGroup("Learning Needs", 7, s7));
+
+        var s8 = new List<SummaryItem>();
+        Add(s8, "Additional information", Answers.AdditionalInfo);
+        groups.Add(new SummaryGroup("Additional Information", 8, s8));
+
+        return groups.Where(g => g.Items.Count > 0).ToList();
     }
 }

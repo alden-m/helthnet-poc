@@ -285,3 +285,84 @@ textarea.fmp-input { resize: vertical; min-height: 140px; line-height: 1.5; }
 .btn-generate:disabled { opacity: .5; cursor: not-allowed; }
 
 .validation-note { color: #b42318; font-size: .9rem; margin-top: .75rem; }
+
+.label-optional { font-weight: 400; color: #94a3b8; }
+.char-counter { text-align: right; }
+
+/* Sample profile quick-fill */
+.sample-profiles {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .6rem;
+    padding: .9rem 1rem;
+    background: var(--brand-050);
+    border: 1px dashed var(--brand-100);
+    border-radius: 12px;
+    margin-bottom: 1.75rem;
+}
+
+.sample-label { font-weight: 600; color: var(--brand-dark); font-size: .92rem; margin-right: .25rem; }
+
+.sample-btn {
+    background: #fff;
+    border: 1px solid var(--brand-100);
+    color: var(--brand-dark);
+    font-weight: 600;
+    font-size: .9rem;
+    padding: .45rem .9rem;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.sample-btn:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+/* Review screen */
+.review-intro { color: var(--muted); margin: -0.5rem 0 1.5rem; }
+
+.review-group {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    background: #fcfcfd;
+}
+
+.review-group-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: .35rem;
+}
+
+.review-group-title { font-size: 1.05rem; font-weight: 700; color: var(--ink); margin: 0; }
+
+.review-edit {
+    background: none;
+    border: none;
+    color: var(--brand);
+    font-weight: 600;
+    cursor: pointer;
+    padding: .25rem .6rem;
+    border-radius: 6px;
+}
+
+.review-edit:hover { background: var(--brand-050); }
+
+.review-items { margin: 0; }
+
+.review-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding: .45rem 0;
+    border-top: 1px solid #f1f5f9;
+}
+
+.review-row:first-child { border-top: none; }
+.review-row dt { color: var(--muted); font-size: .92rem; margin: 0; }
+.review-row dd { color: var(--ink); font-weight: 600; margin: 0; word-break: break-word; }
+
+@media (max-width: 640px) {
+    .review-row { grid-template-columns: 1fr; gap: .1rem; }
+}
