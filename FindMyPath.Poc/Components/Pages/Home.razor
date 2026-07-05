@@ -83,13 +83,53 @@
                 break;
 
             case 3:
-                <p class="text-muted">Immigration status questions go here.</p>
+                @if (Answers.Location == "Canada")
+                {
+                    <div class="question">
+                        <label class="question-label">What is your current immigration status?</label>
+                        <RadioListGroup @bind-Value="Answers.ImmigrationStatus" Options="OptionCatalog.ImmigrationStatuses" TwoCol="true" />
+                    </div>
+                }
+                else
+                {
+                    <div class="question">
+                        <label class="question-label">Are you planning to immigrate to Canada?</label>
+                        <RadioListGroup @bind-Value="Answers.PlanningToImmigrate" Options="ImmigratePlans" />
+                    </div>
+                }
                 break;
+
             case 4:
-                <p class="text-muted">Licensing status questions go here.</p>
+                <div class="question">
+                    <label class="question-label">Have you started your licensing process?</label>
+                    <RadioListGroup @bind-Value="Answers.LicensingStarted" Options="YesNo" TwoCol="true" />
+                </div>
+                <div class="question">
+                    <label class="question-label">Which licensing exams have you completed?</label>
+                    <CheckboxGroup @bind-Selected="Answers.ExamsCompleted" Options="OptionCatalog.Exams" ExclusiveOption="None" TwoCol="true" />
+                </div>
+                <div class="question">
+                    <label class="question-label">Are you currently registered with any Canadian regulatory body?</label>
+                    <RadioListGroup @bind-Value="Answers.RegisteredWithBody" Options="YesNo" TwoCol="true" />
+                </div>
                 break;
+
             case 5:
-                <p class="text-muted">Language proficiency questions go here.</p>
+                <div class="question">
+                    <label class="question-label">Have you completed an English language test?</label>
+                    <RadioListGroup Value="Answers.CompletedLanguageTest" ValueChanged="OnLanguageTestChanged" Options="YesNo" TwoCol="true" />
+                </div>
+                @if (Answers.CompletedLanguageTest == "Yes")
+                {
+                    <div class="question">
+                        <label class="question-label">Which test?</label>
+                        <RadioListGroup @bind-Value="Answers.LanguageTest" Options="OptionCatalog.LanguageTests" TwoCol="true" />
+                    </div>
+                    <div class="question">
+                        <label class="question-label">Score <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
+                        <input class="fmp-input" placeholder="e.g., 7.5 for IELTS" @bind="Answers.LanguageScore" @bind:event="oninput" />
+                    </div>
+                }
                 break;
             case 6:
                 <p class="text-muted">Career goals questions go here.</p>
@@ -127,6 +167,7 @@
     private const int TotalSteps = 8;
 
     private static readonly string[] YesNo = { "Yes", "No" };
+    private static readonly string[] ImmigratePlans = { "Yes", "No", "Undecided" };
 
     private int PercentComplete => (int)Math.Round(CurrentStep / (double)TotalSteps * 100);
 
@@ -149,6 +190,12 @@
         Answers.ClearHiddenLocationAnswers();
     }
 
+    private void OnLanguageTestChanged(string? value)
+    {
+        Answers.CompletedLanguageTest = value;
+        Answers.ClearHiddenLanguageAnswers();
+    }
+
     private static bool NotEmpty(string? s) => !string.IsNullOrWhiteSpace(s);
 
     private bool IsStepValid(int step) => step switch
@@ -159,6 +206,14 @@
              && (Answers.Location != "Canada" || NotEmpty(Answers.Province))
              && (Answers.Location != "Outside Canada" || NotEmpty(Answers.Country))
              && NotEmpty(Answers.TargetProvince),
+        3 => Answers.Location == "Canada"
+                ? NotEmpty(Answers.ImmigrationStatus)
+                : NotEmpty(Answers.PlanningToImmigrate),
+        4 => NotEmpty(Answers.LicensingStarted)
+             && Answers.ExamsCompleted.Count > 0
+             && NotEmpty(Answers.RegisteredWithBody),
+        5 => NotEmpty(Answers.CompletedLanguageTest)
+             && (Answers.CompletedLanguageTest != "Yes" || NotEmpty(Answers.LanguageTest)),
         _ => true
     };
 
