@@ -1,7 +1,86 @@
 @page "/"
+@rendermode InteractiveServer
 
 <PageTitle>Find My Path</PageTitle>
 
-<h1>Find My Path</h1>
+<div class="wizard-shell">
+    <div class="progress-card">
+        <div class="progress-head">
+            <span class="progress-step">Step @CurrentStep of @TotalSteps</span>
+            <span class="progress-percent">@PercentComplete% Complete</span>
+        </div>
+        <div class="progress-track">
+            <div class="progress-fill" style="width:@PercentComplete%"></div>
+        </div>
+    </div>
 
-<p>Guided assessment and AI-drafted Canadian licensing roadmap. (Wizard coming next.)</p>
+    <div class="section-card">
+        <h1 class="section-title">@SectionTitles[CurrentStep - 1]</h1>
+
+        @switch (CurrentStep)
+        {
+            case 1:
+                <p class="text-muted">Professional background questions go here.</p>
+                break;
+            case 2:
+                <p class="text-muted">Current location questions go here.</p>
+                break;
+            case 3:
+                <p class="text-muted">Immigration status questions go here.</p>
+                break;
+            case 4:
+                <p class="text-muted">Licensing status questions go here.</p>
+                break;
+            case 5:
+                <p class="text-muted">Language proficiency questions go here.</p>
+                break;
+            case 6:
+                <p class="text-muted">Career goals questions go here.</p>
+                break;
+            case 7:
+                <p class="text-muted">Learning needs questions go here.</p>
+                break;
+            case 8:
+                <p class="text-muted">Additional information goes here.</p>
+                break;
+        }
+
+        <div class="wizard-divider"></div>
+        <div class="wizard-nav">
+            <button class="btn-prev" disabled="@(CurrentStep == 1)" @onclick="Previous">Previous</button>
+            @if (CurrentStep < TotalSteps)
+            {
+                <button class="btn-next" @onclick="Next">Next &rsaquo;</button>
+            }
+            else
+            {
+                <button class="btn-generate" disabled>Review &rsaquo;</button>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly AssessmentAnswers Answers = new();
+    private int CurrentStep = 1;
+    private const int TotalSteps = 8;
+
+    private int PercentComplete => (int)Math.Round(CurrentStep / (double)TotalSteps * 100);
+
+    private static readonly string[] SectionTitles =
+    {
+        "Professional Background", "Current Location", "Immigration Status",
+        "Licensing Status", "Language Proficiency", "Career Goals",
+        "Learning Needs", "Additional Information"
+    };
+
+    private void Next()
+    {
+        if (CurrentStep < TotalSteps) CurrentStep++;
+    }
+
+    private void Previous()
+    {
+        if (CurrentStep > 1) CurrentStep--;
+    }
+}
