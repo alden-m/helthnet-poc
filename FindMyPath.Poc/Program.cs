@@ -1,5 +1,15 @@
+using System.Globalization;
 using FindMyPath.Poc.Components;
 using FindMyPath.Poc.Services;
+
+// Pin the formatting culture so currency ("$"), numbers and dates render identically on every host.
+// Without this, a Linux/Azure App Service instance with no locale set falls back to the invariant
+// culture, whose currency symbol is the generic "¤" — so demo cost figures would show "¤0.09".
+var appCulture = new CultureInfo("en-CA");
+CultureInfo.DefaultThreadCurrentCulture = appCulture;
+CultureInfo.DefaultThreadCurrentUICulture = appCulture;
+CultureInfo.CurrentCulture = appCulture;
+CultureInfo.CurrentUICulture = appCulture;
 
 var builder = WebApplication.CreateBuilder(args);
 

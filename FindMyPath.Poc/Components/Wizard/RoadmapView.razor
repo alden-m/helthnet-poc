@@ -47,16 +47,19 @@
                 </div>
             }
 
-            <div class="phases-head">
-                <h2 class="phases-title">Your Journey Phases</h2>
-                <span class="phases-progress">@_checked.Count of @TotalSteps steps complete</span>
-            </div>
-            <div class="pathway-progress-track">
-                <div class="pathway-progress-fill" style="width:@ProgressPercent%"></div>
-            </div>
+            @if (Phases.Count > 0)
+            {
+                <div class="phases-head">
+                    <h2 class="phases-title">Your Journey Phases</h2>
+                    <span class="phases-progress">@_checked.Count of @TotalSteps steps complete</span>
+                </div>
+                <div class="pathway-progress-track">
+                    <div class="pathway-progress-fill" style="width:@ProgressPercent%"></div>
+                </div>
+            }
 
             @{ var idx = 0; }
-            @foreach (var phase in Result.Roadmap.Phases)
+            @foreach (var phase in Phases)
             {
                 idx++;
                 var color = PhaseColors[(idx - 1) % PhaseColors.Length];
@@ -72,7 +75,7 @@
                         </div>
                     </div>
                     <div class="phase-steps">
-                        @foreach (var step in phase.Steps)
+                        @foreach (var step in phase.Steps ?? new())
                         {
                             var key = $"{idx}::{step.Title}";
                             var done = _checked.Contains(key);
@@ -105,12 +108,12 @@
                 </div>
             }
 
-            @if (Result.Roadmap.Notes.Count > 0)
+            @if (Notes.Count > 0)
             {
                 <div class="notes-card">
                     <h3 class="notes-title">Important notes</h3>
                     <ul class="notes-list">
-                        @foreach (var note in Result.Roadmap.Notes)
+                        @foreach (var note in Notes)
                         {
                             <li>@note</li>
                         }
@@ -160,7 +163,12 @@
     private readonly HashSet<string> _checked = new();
     private static readonly string[] PhaseColors = { "#16a34a", "#7c3aed", "#2563eb", "#ea580c", "#0891b2", "#db2777" };
 
-    private int TotalSteps => Result.Roadmap?.Phases.Sum(p => p.Steps.Count) ?? 0;
+    // Null-safe views over the roadmap so a stray null collection (from the model, or an old
+    // history snapshot) can never throw during render.
+    private List<PhaseDto> Phases => Result.Roadmap?.Phases ?? new();
+    private List<string> Notes => Result.Roadmap?.Notes ?? new();
+
+    private int TotalSteps => Phases.Sum(p => p.Steps?.Count ?? 0);
     private int ProgressPercent => TotalSteps == 0 ? 0 : (int)Math.Round(_checked.Count / (double)TotalSteps * 100);
 
     private void ToggleStep(string key)

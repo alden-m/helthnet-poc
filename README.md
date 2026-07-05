@@ -55,6 +55,21 @@ The key comes from **configuration**, read as `Anthropic:ApiKey`.
 
 The key is never written to `app_data` and never appears in history snapshots.
 
+## Deploying (Azure App Service or any host)
+
+The app is Blazor **Interactive Server**, so all interactivity — including the live token-by-token
+streaming while a roadmap is generated — runs over a SignalR circuit that needs **WebSockets**.
+
+- **Azure App Service ships with WebSockets OFF by default.** Before the demo, turn it on:
+  **Configuration → General settings → Web sockets → On** (or set `webSocketsEnabled: true` in
+  ARM/Bicep). Without it the circuit falls back to long-polling behind the App Service proxy, which
+  can stutter or drop ("Attempting to reconnect…") mid-generation. If streaming ever misbehaves it
+  still auto-falls-back to a non-streaming call, but enable WebSockets for the smooth demo.
+- Set the API key as an application setting named `Anthropic__ApiKey` (double underscore) — never in
+  the repo.
+- Currency/number/date formatting is pinned to a fixed culture in `Program.cs`, so cost figures show
+  `$` regardless of the host's locale.
+
 ## Persistence
 
 Runtime data is stored as JSON in a **project-relative** `FindMyPath.Poc/app_data/` folder (gitignored):
