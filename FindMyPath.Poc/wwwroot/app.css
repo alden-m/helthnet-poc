@@ -289,6 +289,19 @@ textarea.fmp-input { resize: vertical; min-height: 140px; line-height: 1.5; }
 .label-optional { font-weight: 400; color: #94a3b8; }
 .char-counter { text-align: right; }
 
+/* Page headers (Settings / History) */
+.page-title { font-size: 1.9rem; font-weight: 800; color: var(--ink); margin: 0 0 .4rem; letter-spacing: -.01em; }
+.page-subtitle { color: var(--muted); margin: 0 0 1.5rem; max-width: 60ch; }
+
+.settings-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.save-status { color: var(--success-dark); font-weight: 600; }
+
+textarea.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: .85rem;
+    line-height: 1.5;
+}
+
 /* Sample profile quick-fill */
 .sample-profiles {
     display: flex;

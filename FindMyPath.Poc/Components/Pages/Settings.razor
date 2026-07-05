@@ -1,7 +1,91 @@
 @page "/settings"
+@rendermode InteractiveServer
+@inject PromptSettingsService SettingsService
 
 <PageTitle>Settings</PageTitle>
 
-<h1>Settings</h1>
+<div class="wizard-shell">
+    <h1 class="page-title">Prompt Settings</h1>
+    <p class="page-subtitle">Tune how the AI drafts each roadmap. Changes are saved to a JSON file under your app-data folder and survive restarts.</p>
 
-<p>Tune the AI system instruction and choose the model. (Coming soon.)</p>
+    <div class="section-card">
+        <div class="question">
+            <label class="question-label">Model</label>
+            <select class="fmp-select" @bind="_model">
+                @foreach (var m in ModelCatalog.Models)
+                {
+                    <option value="@m.Id">@m.DisplayName</option>
+                }
+            </select>
+            <div class="hint">Used to generate each roadmap. Pricing feeds the per-run cost estimate shown in History.</div>
+        </div>
+
+        <div class="question">
+            <label class="question-label">System instruction</label>
+            <textarea class="fmp-input mono" rows="18" @bind="_systemInstruction"></textarea>
+            <div class="hint">This is the AI's core instruction. Edit it, save, and regenerate to see how the output changes.</div>
+        </div>
+
+        <div class="question">
+            <label class="question-label">Additional reference material <span class="label-optional">(optional — appended to every request)</span></label>
+            <textarea class="fmp-input" rows="6" @bind="_referenceMaterial" placeholder="e.g. paste a document about specific licensing bodies, and the AI will treat it as authoritative HealthNet guidance..."></textarea>
+            <div style="margin-top:.7rem; display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;">
+                <InputFile OnChange="OnUpload" accept=".txt,.md" />
+                <span class="hint" style="margin:0">Upload a .txt or .md file to load its text into the box above.</span>
+            </div>
+        </div>
+
+        <div class="wizard-divider"></div>
+        <div class="settings-actions">
+            <button class="btn-next" @onclick="SaveSettings">Save</button>
+            <button class="btn-prev" @onclick="ResetPrompt">Reset system instruction to default</button>
+            @if (_status is not null)
+            {
+                <span class="save-status">@_status</span>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _model = ModelCatalog.DefaultModel;
+    private string _systemInstruction = "";
+    private string _referenceMaterial = "";
+    private string? _status;
+
+    protected override void OnInitialized()
+    {
+        var s = SettingsService.Current;
+        _model = s.Model;
+        _systemInstruction = s.SystemInstruction;
+        _referenceMaterial = s.ReferenceMaterial;
+    }
+
+    private void SaveSettings()
+    {
+        SettingsService.Save(_systemInstruction, _model, _referenceMaterial);
+        _status = "Saved.";
+    }
+
+    private void ResetPrompt()
+    {
+        _systemInstruction = DefaultPrompt.SystemInstruction;
+        _status = "System instruction reset to default (click Save to keep it).";
+    }
+
+    private async Task OnUpload(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            if (file is null) return;
+            using var reader = new StreamReader(file.OpenReadStream(maxAllowedSize: 1024 * 1024));
+            _referenceMaterial = await reader.ReadToEndAsync();
+            _status = $"Loaded {file.Name} ({_referenceMaterial.Length:N0} characters). Click Save to keep it.";
+        }
+        catch
+        {
+            _status = "Could not read that file (max 1 MB, .txt or .md).";
+        }
+    }
+}
