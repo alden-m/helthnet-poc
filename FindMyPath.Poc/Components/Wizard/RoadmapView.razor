@@ -142,8 +142,11 @@
 
     <div class="roadmap-actions no-print">
         <button class="btn-prev" @onclick="Print">Print / Save as PDF</button>
-        <button class="btn-next" @onclick="OnRegenerate">Regenerate</button>
-        <button class="btn-generate" @onclick="OnStartOver">Start over</button>
+        @if (!ReadOnly)
+        {
+            <button class="btn-next" @onclick="OnRegenerate">Regenerate</button>
+            <button class="btn-generate" @onclick="OnStartOver">Start over</button>
+        }
     </div>
 </div>
 
@@ -152,6 +155,7 @@
     [Parameter] public AssessmentAnswers Answers { get; set; } = new();
     [Parameter] public EventCallback OnRegenerate { get; set; }
     [Parameter] public EventCallback OnStartOver { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
 
     private readonly HashSet<string> _checked = new();
     private static readonly string[] PhaseColors = { "#16a34a", "#7c3aed", "#2563eb", "#ea580c", "#0891b2", "#db2777" };
