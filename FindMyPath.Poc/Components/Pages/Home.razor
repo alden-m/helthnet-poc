@@ -12,6 +12,10 @@
             <div class="spinner"></div>
             <h1 class="loading-title">Building your personalised pathway&hellip;</h1>
             <p class="loading-sub">The AI is drafting your Canadian licensing roadmap. This can take up to a minute.</p>
+            @if (!string.IsNullOrEmpty(_streamText))
+            {
+                <pre class="stream-panel">@_streamText</pre>
+            }
         </div>
     }
     else if (_result is not null && _result.Success)
@@ -323,14 +327,32 @@
     private bool _generating;
     private RoadmapResult? _result;
 
+    private string _streamText = "";
+
     private async Task StartGenerate()
     {
         _generating = true;
         _result = null;
+        _streamText = "";
         StateHasChanged();
         try
         {
-            var result = await Roadmap.GenerateAsync(Answers);
+            RoadmapResult result;
+            try
+            {
+                // Stream for the live demo effect...
+                result = await Roadmap.GenerateStreamingAsync(Answers, OnStreamDelta);
+                // ...but if streaming fails for any reason, fall back to the proven non-streaming path.
+                if (!result.Success)
+                {
+                    result = await Roadmap.GenerateAsync(Answers);
+                }
+            }
+            catch
+            {
+                result = await Roadmap.GenerateAsync(Answers);
+            }
+
             _result = result;
             if (result.Success)
             {
@@ -341,6 +363,12 @@
         {
             _generating = false;
         }
+    }
+
+    private void OnStreamDelta(string delta)
+    {
+        _streamText += delta;
+        InvokeAsync(StateHasChanged);
     }
 
     private void StartOver()

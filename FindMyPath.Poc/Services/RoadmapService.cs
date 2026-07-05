@@ -1,3 +1,4 @@
+using System.Text;
 using Anthropic;
 using Anthropic.Models.Messages;
 using FindMyPath.Poc.Models;
@@ -58,6 +59,93 @@ public class RoadmapService
             result.CostUsd = ModelCatalog.ComputeCost(model,
                 result.Usage.InputTokens, result.Usage.OutputTokens,
                 result.Usage.CacheReadTokens, result.Usage.CacheWriteTokens);
+            result.Roadmap = RoadmapParser.TryParse(text);
+            result.Success = true;
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.ErrorMessage = FriendlyError(ex);
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Streaming variant: surfaces text as it arrives via <paramref name="onDelta"/> for the live demo.
+    /// Same result shape as GenerateAsync. On any failure it returns a Failed result; the caller can
+    /// fall back to the non-streaming path.
+    /// </summary>
+    public async Task<RoadmapResult> GenerateStreamingAsync(AssessmentAnswers answers, Action<string> onDelta, CancellationToken ct = default)
+    {
+        var settings = _settings.Current;
+        var model = string.IsNullOrWhiteSpace(settings.Model) ? ModelCatalog.DefaultModel : settings.Model;
+        var userMessage = AssessmentFormatter.ToUserMessage(answers, settings.ReferenceMaterial);
+        var result = new RoadmapResult
+        {
+            Model = model,
+            SystemInstruction = settings.SystemInstruction,
+            UserMessage = userMessage,
+            ReferenceMaterial = string.IsNullOrWhiteSpace(settings.ReferenceMaterial) ? null : settings.ReferenceMaterial,
+        };
+
+        var apiKey = _settings.ApiKey;
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            result.Success = false;
+            result.ErrorMessage = "The API key is missing. Add it to the app settings file " +
+                                  "(%APPDATA%\\FindMyPath\\settings.json) or set the ANTHROPIC_API_KEY environment variable.";
+            return result;
+        }
+
+        try
+        {
+            var client = new AnthropicClient { ApiKey = apiKey };
+            var sb = new StringBuilder();
+            long inTok = 0, outTok = 0, cacheRead = 0, cacheWrite = 0;
+
+            var parameters = new MessageCreateParams
+            {
+                Model = model,
+                MaxTokens = 16000,
+                System = settings.SystemInstruction,
+                Messages = [new() { Role = Role.User, Content = userMessage }],
+            };
+
+            await foreach (var ev in client.Messages.CreateStreaming(parameters).WithCancellation(ct))
+            {
+                if (ev.TryPickContentBlockDelta(out var cbd) && cbd.Delta.TryPickText(out var td))
+                {
+                    sb.Append(td.Text);
+                    onDelta(td.Text);
+                }
+                else if (ev.TryPickStart(out var start))
+                {
+                    var u = start.Message.Usage;
+                    inTok = u.InputTokens;
+                    cacheRead = u.CacheReadInputTokens ?? 0;
+                    cacheWrite = u.CacheCreationInputTokens ?? 0;
+                }
+                else if (ev.TryPickDelta(out var md) && md.Usage is { } du)
+                {
+                    outTok = du.OutputTokens;
+                }
+            }
+
+            var text = sb.ToString();
+            result.RawText = text;
+            result.Usage = new TokenUsage
+            {
+                InputTokens = inTok,
+                OutputTokens = outTok,
+                CacheReadTokens = cacheRead,
+                CacheWriteTokens = cacheWrite,
+            };
+            result.CostUsd = ModelCatalog.ComputeCost(model, inTok, outTok, cacheRead, cacheWrite);
             result.Roadmap = RoadmapParser.TryParse(text);
             result.Success = true;
             return result;
