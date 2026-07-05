@@ -1,0 +1,23 @@
+@namespace FindMyPath.Poc.Components.Wizard
+
+<select class="fmp-select" @onchange="HandleChange">
+    <option value="" selected="@(string.IsNullOrEmpty(Value))">@Placeholder</option>
+    @foreach (var opt in Options)
+    {
+        <option value="@opt" selected="@(opt == Value)">@opt</option>
+    }
+</select>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public IEnumerable<string> Options { get; set; } = Array.Empty<string>();
+    [Parameter] public string Placeholder { get; set; } = "Select...";
+
+    private async Task HandleChange(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        Value = string.IsNullOrEmpty(v) ? null : v;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

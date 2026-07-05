@@ -1,0 +1,50 @@
+@namespace FindMyPath.Poc.Components.Wizard
+
+<div class="@ListCls">
+    @foreach (var opt in Options)
+    {
+        var isSel = Selected.Contains(opt);
+        var isDisabled = IsDisabled(opt);
+        var itemCls = "choice" + (isSel ? " selected" : "") + (isDisabled ? " disabled" : "");
+        <label class="@itemCls">
+            <input type="checkbox" checked="@isSel" disabled="@isDisabled" @onchange="@(() => Toggle(opt))" />
+            <span>@opt</span>
+        </label>
+    }
+</div>
+
+@code {
+    [Parameter] public List<string> Selected { get; set; } = new();
+    [Parameter] public EventCallback<List<string>> SelectedChanged { get; set; }
+    [Parameter] public IEnumerable<string> Options { get; set; } = Array.Empty<string>();
+    [Parameter] public bool TwoCol { get; set; }
+
+    /// <summary>Optional mutually-exclusive option (e.g. "None"): selecting it clears the rest and disables them.</summary>
+    [Parameter] public string? ExclusiveOption { get; set; }
+
+    private string ListCls => TwoCol ? "choice-list two-col" : "choice-list";
+
+    private bool IsDisabled(string opt)
+        => ExclusiveOption is not null && opt != ExclusiveOption && Selected.Contains(ExclusiveOption);
+
+    private async Task Toggle(string opt)
+    {
+        var next = new List<string>(Selected);
+        if (opt == ExclusiveOption)
+        {
+            if (next.Contains(opt)) next.Remove(opt);
+            else { next.Clear(); next.Add(opt); }
+        }
+        else
+        {
+            if (next.Contains(opt)) next.Remove(opt);
+            else
+            {
+                next.Add(opt);
+                if (ExclusiveOption is not null) next.Remove(ExclusiveOption);
+            }
+        }
+        Selected = next;
+        await SelectedChanged.InvokeAsync(next);
+    }
+}

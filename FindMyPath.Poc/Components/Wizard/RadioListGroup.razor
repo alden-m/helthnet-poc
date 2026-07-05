@@ -1,0 +1,28 @@
+@namespace FindMyPath.Poc.Components.Wizard
+
+<div class="@ListCls">
+    @foreach (var opt in Options)
+    {
+        var itemCls = opt == Value ? "choice selected" : "choice";
+        <label class="@itemCls">
+            <input type="radio" name="@_name" checked="@(opt == Value)" @onchange="@(() => Select(opt))" />
+            <span>@opt</span>
+        </label>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public IEnumerable<string> Options { get; set; } = Array.Empty<string>();
+    [Parameter] public bool TwoCol { get; set; }
+
+    private readonly string _name = "radio-" + Guid.NewGuid().ToString("N");
+    private string ListCls => TwoCol ? "choice-list two-col" : "choice-list";
+
+    private async Task Select(string opt)
+    {
+        Value = opt;
+        await ValueChanged.InvokeAsync(opt);
+    }
+}

@@ -20,11 +20,68 @@
         @switch (CurrentStep)
         {
             case 1:
-                <p class="text-muted">Professional background questions go here.</p>
+                <div class="question">
+                    <label class="question-label">What is your healthcare profession?</label>
+                    <SelectInput @bind-Value="Answers.Profession" Options="OptionCatalog.Professions" Placeholder="Select your profession" />
+                </div>
+                <div class="question">
+                    <label class="question-label">In which country did you receive your professional qualification?</label>
+                    <SelectInput @bind-Value="Answers.QualificationCountry" Options="OptionCatalog.Countries" Placeholder="Select country" />
+                </div>
+                <div class="question">
+                    <label class="question-label">Have you completed your internship or residency (if applicable)?</label>
+                    <RadioListGroup @bind-Value="Answers.CompletedInternship" Options="YesNo" TwoCol="true" />
+                </div>
+                <div class="question">
+                    <label class="question-label">How many years of clinical experience do you have?</label>
+                    <SelectInput @bind-Value="Answers.YearsExperience" Options="OptionCatalog.YearsExperience" Placeholder="Select years of experience" />
+                </div>
                 break;
+
             case 2:
-                <p class="text-muted">Current location questions go here.</p>
+                var canadaCls = Answers.Location == "Canada" ? "option-card selected" : "option-card";
+                var outsideCls = Answers.Location == "Outside Canada" ? "option-card selected" : "option-card";
+                <div class="question">
+                    <label class="question-label">Where are you currently living?</label>
+                    <div class="option-grid cols-2">
+                        <label class="@canadaCls">
+                            <input type="radio" name="loc" checked="@(Answers.Location == "Canada")" @onchange="SetCanada" />
+                            <svg class="option-icon" viewBox="0 0 16 16" style="fill:var(--brand)" aria-hidden="true"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6"/></svg>
+                            <span>Inside Canada</span>
+                        </label>
+                        <label class="@outsideCls">
+                            <input type="radio" name="loc" checked="@(Answers.Location == "Outside Canada")" @onchange="SetOutside" />
+                            <svg class="option-icon" viewBox="0 0 16 16" style="fill:#ea580c" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m7.5-6.923c-.67.204-1.335.82-1.887 1.855A8 8 0 0 0 5.145 4H7.5zM4.09 4a9.3 9.3 0 0 1 .64-1.539 7 7 0 0 1 .597-.933A7.03 7.03 0 0 0 2.255 4zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a7 7 0 0 0-.656 2.5zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5zM8.5 5v2.5h2.99a12.5 12.5 0 0 0-.337-2.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5zm3.99 0V11h2.653c.187-.766.306-1.608.338-2.5zM5.145 12q.208.58.468 1.068c.552 1.035 1.218 1.65 1.887 1.855V12zm.182 2.472a7 7 0 0 1-.597-.933A9.3 9.3 0 0 1 4.09 12H2.255a7 7 0 0 0 3.072 2.472M3.82 11a13.7 13.7 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5zm6.853 3.472A7 7 0 0 0 13.745 12H11.91a9.3 9.3 0 0 1-.64 1.539 7 7 0 0 1-.597.933M8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855q.26-.487.468-1.068zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.7 13.7 0 0 1-.312 2.5m2.802-3.5a7 7 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7 7 0 0 0-3.072-2.472c.218.284.418.598.597.933M10.855 4a8 8 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4z"/></svg>
+                            <span>Outside Canada</span>
+                        </label>
+                    </div>
+                </div>
+
+                @if (Answers.Location == "Canada")
+                {
+                    <div class="question">
+                        <label class="question-label">Province</label>
+                        <SelectInput @bind-Value="Answers.Province" Options="OptionCatalog.Provinces" Placeholder="Select province" />
+                    </div>
+                    <div class="question">
+                        <label class="question-label">City</label>
+                        <input class="fmp-input" maxlength="255" placeholder="City" @bind="Answers.City" @bind:event="oninput" />
+                    </div>
+                }
+                else if (Answers.Location == "Outside Canada")
+                {
+                    <div class="question">
+                        <label class="question-label">Country</label>
+                        <SelectInput @bind-Value="Answers.Country" Options="OptionCatalog.Countries" Placeholder="Select country" />
+                    </div>
+                }
+
+                <div class="question">
+                    <label class="question-label">Which province do you plan to practise in?</label>
+                    <SelectInput @bind-Value="Answers.TargetProvince" Options="OptionCatalog.TargetProvinces" Placeholder="Select province" />
+                </div>
                 break;
+
             case 3:
                 <p class="text-muted">Immigration status questions go here.</p>
                 break;
@@ -46,11 +103,15 @@
         }
 
         <div class="wizard-divider"></div>
+        @if (!IsStepValid(CurrentStep))
+        {
+            <p class="validation-note">Please answer all required questions to continue.</p>
+        }
         <div class="wizard-nav">
             <button class="btn-prev" disabled="@(CurrentStep == 1)" @onclick="Previous">Previous</button>
             @if (CurrentStep < TotalSteps)
             {
-                <button class="btn-next" @onclick="Next">Next &rsaquo;</button>
+                <button class="btn-next" disabled="@(!IsStepValid(CurrentStep))" @onclick="Next">Next &rsaquo;</button>
             }
             else
             {
@@ -65,6 +126,8 @@
     private int CurrentStep = 1;
     private const int TotalSteps = 8;
 
+    private static readonly string[] YesNo = { "Yes", "No" };
+
     private int PercentComplete => (int)Math.Round(CurrentStep / (double)TotalSteps * 100);
 
     private static readonly string[] SectionTitles =
@@ -74,9 +137,34 @@
         "Learning Needs", "Additional Information"
     };
 
+    private void SetCanada()
+    {
+        Answers.Location = "Canada";
+        Answers.ClearHiddenLocationAnswers();
+    }
+
+    private void SetOutside()
+    {
+        Answers.Location = "Outside Canada";
+        Answers.ClearHiddenLocationAnswers();
+    }
+
+    private static bool NotEmpty(string? s) => !string.IsNullOrWhiteSpace(s);
+
+    private bool IsStepValid(int step) => step switch
+    {
+        1 => NotEmpty(Answers.Profession) && NotEmpty(Answers.QualificationCountry)
+             && NotEmpty(Answers.CompletedInternship) && NotEmpty(Answers.YearsExperience),
+        2 => NotEmpty(Answers.Location)
+             && (Answers.Location != "Canada" || NotEmpty(Answers.Province))
+             && (Answers.Location != "Outside Canada" || NotEmpty(Answers.Country))
+             && NotEmpty(Answers.TargetProvince),
+        _ => true
+    };
+
     private void Next()
     {
-        if (CurrentStep < TotalSteps) CurrentStep++;
+        if (CurrentStep < TotalSteps && IsStepValid(CurrentStep)) CurrentStep++;
     }
 
     private void Previous()
