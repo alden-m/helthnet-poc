@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FindMyPath.Poc.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace FindMyPath.Poc.Services;
 
@@ -16,9 +17,14 @@ public class PromptSettingsService
     };
 
     private readonly object _lock = new();
+    private readonly IConfiguration _config;
     private PromptSettings _settings;
 
-    public PromptSettingsService() => _settings = Load();
+    public PromptSettingsService(IConfiguration config)
+    {
+        _config = config;
+        _settings = Load();
+    }
 
     public PromptSettings Current
     {
@@ -30,10 +36,17 @@ public class PromptSettingsService
     {
         get
         {
+            // 1) appsettings.json (Anthropic:ApiKey) - the primary place to put the key.
+            var fromConfig = _config["Anthropic:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(fromConfig)) return fromConfig;
+
+            // 2) app-data settings.json (fallback).
             lock (_lock)
             {
                 if (!string.IsNullOrWhiteSpace(_settings.ApiKey)) return _settings.ApiKey;
             }
+
+            // 3) ANTHROPIC_API_KEY environment variable (fallback).
             return Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
         }
     }
