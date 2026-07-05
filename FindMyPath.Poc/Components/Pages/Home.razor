@@ -1,5 +1,6 @@
 @page "/"
 @rendermode InteractiveServer
+@implements IDisposable
 @inject RoadmapService Roadmap
 @inject HistoryService History
 
@@ -11,11 +12,22 @@
         <div class="section-card loading-card">
             <div class="spinner"></div>
             <h1 class="loading-title">Building your personalised pathway&hellip;</h1>
-            <p class="loading-sub">The AI is drafting your Canadian licensing roadmap. This can take up to a minute.</p>
-            @if (!string.IsNullOrEmpty(_streamText))
-            {
-                <pre class="stream-panel">@_streamText</pre>
-            }
+            <p class="loading-sub">@CurrentStatus</p>
+
+            <div class="gen-progress">
+                <div class="gen-bar"><div class="gen-bar-fill"></div></div>
+                <div class="gen-stats">
+                    <div class="gen-stat">
+                        <span class="gen-stat-val">@ElapsedDisplay</span>
+                        <span class="gen-stat-label">Elapsed</span>
+                    </div>
+                    <div class="gen-stat">
+                        <span class="gen-stat-val">@DataDisplay</span>
+                        <span class="gen-stat-label">Roadmap drafted</span>
+                    </div>
+                </div>
+                <p class="gen-hint">This usually takes 20–60 seconds. Please keep this tab open.</p>
+            </div>
         </div>
     }
     else if (_result is not null && _result.Success)
@@ -327,13 +339,51 @@
     private bool _generating;
     private RoadmapResult? _result;
 
-    private string _streamText = "";
+    // Progress signals for the loading screen. We deliberately do NOT render the raw model
+    // text (it streams as JSON, which looks alarming to a non-technical client). Instead we
+    // show an elapsed timer + how much of the roadmap has been drafted (KB) + a friendly
+    // status line. Byte count is accumulated off the stream thread; a fixed-cadence ticker
+    // drives re-renders so a fast token stream can never flood the SignalR circuit.
+    private DateTime _genStartUtc;
+    private long _receivedBytes;
+    private CancellationTokenSource? _ticker;
+
+    private static readonly string[] StatusMessages =
+    {
+        "Reviewing your professional background and credentials…",
+        "Identifying the applicable Canadian licensing pathway…",
+        "Mapping your exams and experience to Canadian requirements…",
+        "Estimating realistic timelines and costs…",
+        "Finalising your personalised roadmap…",
+    };
+
+    private int ElapsedSeconds => (int)Math.Max(0, (DateTime.UtcNow - _genStartUtc).TotalSeconds);
+
+    private string ElapsedDisplay
+    {
+        get { var s = ElapsedSeconds; return $"{s / 60}:{s % 60:00}"; }
+    }
+
+    private string DataDisplay
+    {
+        get
+        {
+            var kb = Interlocked.Read(ref _receivedBytes) / 1024.0;
+            return kb < 0.1 ? "0.0 KB" : $"{kb:0.0} KB";
+        }
+    }
+
+    private string CurrentStatus =>
+        StatusMessages[Math.Min(StatusMessages.Length - 1, ElapsedSeconds / 7)];
 
     private async Task StartGenerate()
     {
+        if (_generating) return; // guard against a double-click / re-entrant generate
         _generating = true;
         _result = null;
-        _streamText = "";
+        Interlocked.Exchange(ref _receivedBytes, 0);
+        _genStartUtc = DateTime.UtcNow;
+        StartTicker();
         StateHasChanged();
         try
         {
@@ -362,14 +412,46 @@
         finally
         {
             _generating = false;
+            StopTicker();
         }
     }
 
+    // Called from the streaming call on a background thread for every token delta.
+    // Only accumulates a byte count (thread-safe) — never touches the render.
     private void OnStreamDelta(string delta)
     {
-        _streamText += delta;
-        InvokeAsync(StateHasChanged);
+        if (string.IsNullOrEmpty(delta)) return;
+        Interlocked.Add(ref _receivedBytes, System.Text.Encoding.UTF8.GetByteCount(delta));
     }
+
+    private void StartTicker()
+    {
+        StopTicker();
+        var cts = new CancellationTokenSource();
+        _ticker = cts;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (!cts.IsCancellationRequested)
+                {
+                    await Task.Delay(500, cts.Token);
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch { /* component gone / circuit closed — nothing to update */ }
+        });
+    }
+
+    private void StopTicker()
+    {
+        var t = _ticker;
+        _ticker = null;
+        try { t?.Cancel(); t?.Dispose(); } catch { /* ignore */ }
+    }
+
+    public void Dispose() => StopTicker();
 
     private void StartOver()
     {
