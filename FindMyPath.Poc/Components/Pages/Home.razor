@@ -1,10 +1,36 @@
 @page "/"
 @rendermode InteractiveServer
+@inject RoadmapService Roadmap
+@inject HistoryService History
 
 <PageTitle>Find My Path</PageTitle>
 
 <div class="wizard-shell">
-    @if (CurrentStep <= TotalSteps)
+    @if (_generating)
+    {
+        <div class="section-card loading-card">
+            <div class="spinner"></div>
+            <h1 class="loading-title">Building your personalised pathway&hellip;</h1>
+            <p class="loading-sub">The AI is drafting your Canadian licensing roadmap. This can take up to a minute.</p>
+        </div>
+    }
+    else if (_result is not null && _result.Success)
+    {
+        <RoadmapView Result="_result" Answers="Answers" OnRegenerate="StartGenerate" OnStartOver="StartOver" />
+    }
+    else if (_result is not null)
+    {
+        <div class="section-card">
+            <h1 class="section-title">We couldn't generate your pathway</h1>
+            <p class="error-msg">@_result.ErrorMessage</p>
+            <div class="wizard-divider"></div>
+            <div class="wizard-nav">
+                <button class="btn-prev" @onclick="BackToReviewFromResult">Back to review</button>
+                <button class="btn-generate" @onclick="StartGenerate">Try again</button>
+            </div>
+        </div>
+    }
+    else if (CurrentStep <= TotalSteps)
     {
         <div class="progress-card">
             <div class="progress-head">
@@ -294,9 +320,70 @@
 
     private void EditSection(int step) => CurrentStep = step;
 
-    private void StartGenerate()
+    private bool _generating;
+    private RoadmapResult? _result;
+
+    private async Task StartGenerate()
     {
-        // Wired to the Claude API in the generate step.
+        _generating = true;
+        _result = null;
+        StateHasChanged();
+        try
+        {
+            var result = await Roadmap.GenerateAsync(Answers);
+            _result = result;
+            if (result.Success)
+            {
+                SaveHistory(result);
+            }
+        }
+        finally
+        {
+            _generating = false;
+        }
+    }
+
+    private void StartOver()
+    {
+        ResetAnswers();
+        _result = null;
+        CurrentStep = 1;
+    }
+
+    private void BackToReviewFromResult()
+    {
+        _result = null;
+        CurrentStep = ReviewStep;
+    }
+
+    private void SaveHistory(RoadmapResult result)
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var record = new SubmissionRecord
+            {
+                Id = now.ToString("yyyyMMdd-HHmmss-fff"),
+                TimestampUtc = now.ToString("o"),
+                Model = result.Model,
+                Input = Answers,
+                InputText = result.UserMessage,
+                SystemInstruction = result.SystemInstruction,
+                ReferenceMaterial = result.ReferenceMaterial,
+                Output = result.Roadmap,
+                RawOutput = result.RawText,
+                ParsedOk = result.ParsedOk,
+                Usage = result.Usage,
+                CostUsd = result.CostUsd,
+                Profession = Answers.Profession,
+                RecommendedPathway = result.Roadmap?.RecommendedPathway,
+            };
+            History.Save(record);
+        }
+        catch
+        {
+            // history is best-effort; never block the demo
+        }
     }
 
     private void ResetAnswers()

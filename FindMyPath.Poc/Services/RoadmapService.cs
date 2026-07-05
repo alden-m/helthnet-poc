@@ -19,7 +19,13 @@ public class RoadmapService
         var settings = _settings.Current;
         var model = string.IsNullOrWhiteSpace(settings.Model) ? ModelCatalog.DefaultModel : settings.Model;
         var userMessage = AssessmentFormatter.ToUserMessage(answers, settings.ReferenceMaterial);
-        var result = new RoadmapResult { Model = model };
+        var result = new RoadmapResult
+        {
+            Model = model,
+            SystemInstruction = settings.SystemInstruction,
+            UserMessage = userMessage,
+            ReferenceMaterial = string.IsNullOrWhiteSpace(settings.ReferenceMaterial) ? null : settings.ReferenceMaterial,
+        };
 
         var apiKey = _settings.ApiKey;
         if (string.IsNullOrWhiteSpace(apiKey))

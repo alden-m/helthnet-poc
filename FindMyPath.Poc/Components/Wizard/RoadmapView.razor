@@ -1,0 +1,168 @@
+@namespace FindMyPath.Poc.Components.Wizard
+@inject IJSRuntime JS
+
+<div class="roadmap">
+    <div class="roadmap-hero">
+        <div class="roadmap-hero-top">
+            <div class="roadmap-hero-title">
+                <svg viewBox="0 0 16 16" class="hero-check" aria-hidden="true"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>
+                <span>Your Personalized Pathway</span>
+            </div>
+            <span class="draft-badge">Draft · AI-generated, pending advisor review</span>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Result.Roadmap?.Summary))
+        {
+            <p class="roadmap-hero-sub">@Result.Roadmap!.Summary</p>
+        }
+
+        <div class="stat-chips">
+            <div class="stat-chip">
+                <span class="stat-label">Profession</span>
+                <span class="stat-val">@(string.IsNullOrWhiteSpace(Answers.Profession) ? "—" : Answers.Profession)</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-label">Target Province</span>
+                <span class="stat-val">@(string.IsNullOrWhiteSpace(Answers.TargetProvince) ? "Not specified" : Answers.TargetProvince)</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-label">Estimated Timeline</span>
+                <span class="stat-val">@(string.IsNullOrWhiteSpace(Result.Roadmap?.EstimatedTotalTimeline) ? "—" : Result.Roadmap!.EstimatedTotalTimeline)</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-label">Estimated Cost</span>
+                <span class="stat-val">@(string.IsNullOrWhiteSpace(Result.Roadmap?.EstimatedTotalCost) ? "—" : Result.Roadmap!.EstimatedTotalCost)</span>
+            </div>
+        </div>
+    </div>
+
+    @if (Result.Roadmap is not null)
+    {
+        <div class="section-card">
+            @if (!string.IsNullOrWhiteSpace(Result.Roadmap.RecommendedPathway))
+            {
+                <div class="recommended-pathway">
+                    <span class="rp-label">Recommended pathway</span>
+                    <div class="rp-value">@Result.Roadmap.RecommendedPathway</div>
+                </div>
+            }
+
+            <div class="phases-head">
+                <h2 class="phases-title">Your Journey Phases</h2>
+                <span class="phases-progress">@_checked.Count of @TotalSteps steps complete</span>
+            </div>
+            <div class="pathway-progress-track">
+                <div class="pathway-progress-fill" style="width:@ProgressPercent%"></div>
+            </div>
+
+            @{ var idx = 0; }
+            @foreach (var phase in Result.Roadmap.Phases)
+            {
+                idx++;
+                var color = PhaseColors[(idx - 1) % PhaseColors.Length];
+                <div class="phase-card" style="border-left-color:@color">
+                    <div class="phase-head">
+                        <div class="phase-num" style="background:@color">@idx</div>
+                        <div class="phase-head-text">
+                            <h3 class="phase-title">@phase.Title</h3>
+                            @if (!string.IsNullOrWhiteSpace(phase.Description))
+                            {
+                                <div class="phase-desc">@phase.Description</div>
+                            }
+                        </div>
+                    </div>
+                    <div class="phase-steps">
+                        @foreach (var step in phase.Steps)
+                        {
+                            var key = $"{idx}::{step.Title}";
+                            var done = _checked.Contains(key);
+                            var stepCls = done ? "step-item done" : "step-item";
+                            <label class="@stepCls">
+                                <input type="checkbox" checked="@done" @onchange="@(() => ToggleStep(key))" />
+                                <div class="step-body">
+                                    <div class="step-title">@step.Title</div>
+                                    @if (!string.IsNullOrWhiteSpace(step.Description))
+                                    {
+                                        <div class="step-desc">@step.Description</div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(step.EstimatedTimeline) || !string.IsNullOrWhiteSpace(step.EstimatedCost))
+                                    {
+                                        <div class="step-meta">
+                                            @if (!string.IsNullOrWhiteSpace(step.EstimatedTimeline))
+                                            {
+                                                <span class="step-meta-item">⏱ @step.EstimatedTimeline</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(step.EstimatedCost))
+                                            {
+                                                <span class="step-meta-item">💲 @step.EstimatedCost</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </label>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (Result.Roadmap.Notes.Count > 0)
+            {
+                <div class="notes-card">
+                    <h3 class="notes-title">Important notes</h3>
+                    <ul class="notes-list">
+                        @foreach (var note in Result.Roadmap.Notes)
+                        {
+                            <li>@note</li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="section-card">
+            <p class="hint">The AI returned a response we couldn't format automatically. Here is the raw output:</p>
+            <pre class="raw-text">@Result.RawText</pre>
+        </div>
+    }
+
+    <details class="what-sent no-print">
+        <summary>What was sent to the AI</summary>
+        <div class="what-sent-body">
+            <h4>System instruction</h4>
+            <pre>@Result.SystemInstruction</pre>
+            <h4>User message</h4>
+            <pre>@Result.UserMessage</pre>
+            <div class="what-sent-meta">
+                Model: @ModelCatalog.DisplayName(Result.Model) · @Result.Usage.InputTokens.ToString("N0") in / @Result.Usage.OutputTokens.ToString("N0") out tokens · estimated cost @Result.CostUsd.ToString("C4")
+            </div>
+        </div>
+    </details>
+
+    <div class="roadmap-actions no-print">
+        <button class="btn-prev" @onclick="Print">Print / Save as PDF</button>
+        <button class="btn-next" @onclick="OnRegenerate">Regenerate</button>
+        <button class="btn-generate" @onclick="OnStartOver">Start over</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public RoadmapResult Result { get; set; } = new();
+    [Parameter] public AssessmentAnswers Answers { get; set; } = new();
+    [Parameter] public EventCallback OnRegenerate { get; set; }
+    [Parameter] public EventCallback OnStartOver { get; set; }
+
+    private readonly HashSet<string> _checked = new();
+    private static readonly string[] PhaseColors = { "#16a34a", "#7c3aed", "#2563eb", "#ea580c", "#0891b2", "#db2777" };
+
+    private int TotalSteps => Result.Roadmap?.Phases.Sum(p => p.Steps.Count) ?? 0;
+    private int ProgressPercent => TotalSteps == 0 ? 0 : (int)Math.Round(_checked.Count / (double)TotalSteps * 100);
+
+    private void ToggleStep(string key)
+    {
+        if (!_checked.Remove(key)) _checked.Add(key);
+    }
+
+    private async Task Print() => await JS.InvokeVoidAsync("window.print");
+}

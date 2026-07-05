@@ -46,4 +46,9 @@ public class RoadmapResult
     public decimal CostUsd { get; set; }
     public string Model { get; set; } = "";
     public bool ParsedOk => Roadmap is not null;
+
+    // Exactly what was sent to the AI (for the "what was sent" panel and history snapshot).
+    public string SystemInstruction { get; set; } = "";
+    public string UserMessage { get; set; } = "";
+    public string? ReferenceMaterial { get; set; }
 }
