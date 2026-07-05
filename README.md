@@ -1,0 +1,84 @@
+# Find My Path — AI Proof of Concept
+
+A **throwaway proof-of-concept** for HealthNet Canada's flagship feature, *Find My Path*: an internationally
+educated health professional (IEHP) completes a short guided assessment, and Claude drafts a personalised
+Canadian licensing roadmap. The point of this PoC is to answer one question live, in front of the client —
+*is the AI output good enough to build the real product on?* Everything else (auth, database, advisor-review
+workflow) is deliberately out of scope.
+
+It is a single ASP.NET Core **Blazor Web App** (Interactive Server), talking to the Claude API through the
+official Anthropic C# SDK. There is no database — settings and submission history are plain JSON files under
+your app-data folder.
+
+## What's in it
+
+Three tabs in the sidebar:
+
+- **Find My Path** — an 8-step wizard (progress bar on top, Back/Next, per-step validation, conditional
+  branching) ending in a review screen and a **Generate My Pathway** button. Three **sample profiles** on the
+  first screen fill every answer and jump straight to review — one click to the AI during a demo. Generation
+  streams the model's output live, then renders a phase-by-phase roadmap with timelines, costs, checkable
+  steps, and a "What was sent to the AI" panel.
+- **Settings** — tune the AI without touching code: the system instruction, an optional reference-material
+  block (with `.txt`/`.md` upload), and the model. Saved to `settings.json`, survives restarts.
+- **History** — every generation is saved as a JSON snapshot (the answers, the categorized output phases, the
+  API cost, and the exact prompt used). Click any submission to see the full snapshot.
+
+## Prerequisites
+
+- **.NET 10 SDK** (any recent SDK works). Check with `dotnet --version`; install from
+  <https://dotnet.microsoft.com/download> if missing.
+- **An Anthropic API key** from <https://console.anthropic.com>.
+
+## The API key (never committed)
+
+The key is read from a JSON settings file under your app-data folder, **not** from the repo:
+
+```
+%APPDATA%\FindMyPath\settings.json      (Windows)
+~/.config/FindMyPath/settings.json      (Linux/macOS – ApplicationData folder)
+```
+
+```json
+{
+  "apiKey": "sk-ant-...",
+  "model": "claude-opus-4-8",
+  "systemInstruction": ""
+}
+```
+
+As a fallback, if `apiKey` is absent the app reads the `ANTHROPIC_API_KEY` environment variable. The key is
+never written to the repository, and history snapshots never include it.
+
+## Run it
+
+```bash
+cd FindMyPath.Poc
+dotnet run
+```
+
+Then open the URL printed in the console. To pin a port: `dotnet run --urls http://localhost:5080`.
+
+Tune the prompt and pick the model on the **Settings** tab.
+
+## Notes on the spec vs. the client mockups
+
+The build follows the written spec (`docs/find-my-path-poc.md`) as the source of truth and adopts the client's
+design mockups (`docs/suggested-screenshots/`) for the visual style. Where they disagreed, the resolved choices
+were:
+
+- **App shell** uses the standard Blazor sidebar template (three tabs); the **wizard and result content** are
+  styled to match the polished mockups (purple accents, card selectors, green gradient result page, stat chips,
+  phase cards).
+- The **full 8-section questionnaire** from the spec is kept (richer input → better AI output), plus a
+  "Target Province" question folded in from the mockups. The mockups showed a leaner 6-step flow; the spec's
+  richer set was used.
+- A few field types differ between spec and mockups (e.g. profession as radio vs. dropdown, qualification
+  country as dropdown vs. free text, experience buckets). The spec's option lists were kept; dropdowns were
+  used where the mockups showed them.
+- The mockups' contextual "why this matters" hint boxes were intentionally omitted.
+
+## Throwaway by design
+
+No tests, no CI, no auth, no database, no persistence of user answers beyond the local history snapshots.
+This code is meant to be discarded once the client decides whether to build the real product.
