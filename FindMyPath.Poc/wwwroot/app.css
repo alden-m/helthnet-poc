@@ -490,7 +490,7 @@ textarea.mono {
     display: flex; align-items: center; justify-content: center;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
-.phase-head-text { flex: 1; }
+.phase-head-text { flex: 1; min-width: 0; }
 .phase-title { font-size: 1.15rem; font-weight: 700; color: var(--ink); margin: .15rem 0 .25rem; }
 .phase-desc { color: var(--muted); line-height: 1.5; }
 
@@ -502,7 +502,7 @@ textarea.mono {
     cursor: pointer;
 }
 .step-item input { margin-top: .2rem; accent-color: var(--success); width: 1.15rem; height: 1.15rem; flex: 0 0 auto; }
-.step-body { flex: 1; }
+.step-body { flex: 1; min-width: 0; }
 .step-title { font-weight: 700; color: var(--ink); }
 .step-item.done .step-title { text-decoration: line-through; color: var(--muted); }
 .step-desc { color: var(--muted); line-height: 1.5; margin-top: .2rem; }
@@ -534,6 +534,15 @@ textarea.mono {
 
 .roadmap-actions { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: flex-end; margin-top: .5rem; }
 
+/* Guard against long unbroken AI strings (e.g. a bare URL) overflowing their card and
+   forcing a horizontal page scrollbar or clipping on print. */
+.roadmap-hero-sub, .stat-val, .rp-value,
+.phase-title, .phase-desc, .step-title, .step-desc,
+.step-meta-item, .notes-list li, .raw-text {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 /* ===== Print (only the roadmap prints cleanly) ===== */
 @media print {
     .sidebar, .top-row, .no-print { display: none !important; }
@@ -542,6 +551,8 @@ textarea.mono {
     .wizard-shell { max-width: 100%; padding: 0; }
     .roadmap-hero { box-shadow: none; }
     .phase-card, .section-card { box-shadow: none; break-inside: avoid; }
+    /* Don't clip a long raw-text fallback to its on-screen scroll box when printing. */
+    .raw-text { max-height: none; overflow: visible; }
 }
 
 /* ===== History ===== */
