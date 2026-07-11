@@ -21,6 +21,8 @@ builder.Services.AddSingleton<AppPaths>();
 builder.Services.AddSingleton<PromptSettingsService>();
 builder.Services.AddSingleton<HistoryService>();
 builder.Services.AddSingleton<RoadmapService>();
+// Per-circuit wizard/roadmap state so it survives navigating to Settings/History and back.
+builder.Services.AddScoped<WizardState>();
 
 var app = builder.Build();
 

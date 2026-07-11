@@ -3,6 +3,7 @@
 @implements IDisposable
 @inject RoadmapService Roadmap
 @inject HistoryService History
+@inject WizardState State
 
 <PageTitle>Find My Path</PageTitle>
 
@@ -32,7 +33,7 @@
     }
     else if (_result is not null && _result.Success)
     {
-        <RoadmapView Result="_result" Answers="Answers" OnRegenerate="StartGenerate" OnStartOver="StartOver" />
+        <RoadmapView Result="_result" Answers="Answers" CheckedSteps="State.CheckedSteps" OnRegenerate="StartGenerate" OnStartOver="StartOver" />
     }
     else if (_result is not null)
     {
@@ -258,8 +259,10 @@
 </div>
 
 @code {
-    private readonly AssessmentAnswers Answers = new();
-    private int CurrentStep = 1;
+    // Wizard/result state lives in the circuit-scoped WizardState so it survives navigating to
+    // Settings/History and back (or clicking the active nav / brand link) instead of being wiped.
+    private AssessmentAnswers Answers => State.Answers;
+    private int CurrentStep { get => State.CurrentStep; set => State.CurrentStep = value; }
     private const int TotalSteps = 8;
     private const int ReviewStep = 9;
 
@@ -337,7 +340,7 @@
     private void EditSection(int step) => CurrentStep = step;
 
     private bool _generating;
-    private RoadmapResult? _result;
+    private RoadmapResult? _result { get => State.Result; set => State.Result = value; }
 
     // Progress signals for the loading screen. We deliberately do NOT render the raw model
     // text (it streams as JSON, which looks alarming to a non-technical client). Instead we
@@ -347,6 +350,7 @@
     private DateTime _genStartUtc;
     private long _receivedBytes;
     private CancellationTokenSource? _ticker;
+    private CancellationTokenSource? _genCts; // aborts the outbound Claude call if the user navigates away
 
     private static readonly string[] StatusMessages =
     {
@@ -381,8 +385,14 @@
         if (_generating) return; // guard against a double-click / re-entrant generate
         _generating = true;
         _result = null;
+        State.CheckedSteps.Clear(); // a new roadmap starts with no ticked steps
         Interlocked.Exchange(ref _receivedBytes, 0);
         _genStartUtc = DateTime.UtcNow;
+
+        _genCts?.Dispose();
+        _genCts = new CancellationTokenSource();
+        var ct = _genCts.Token;
+
         StartTicker();
         StateHasChanged();
         try
@@ -391,16 +401,21 @@
             try
             {
                 // Stream for the live demo effect...
-                result = await Roadmap.GenerateStreamingAsync(Answers, OnStreamDelta);
+                result = await Roadmap.GenerateStreamingAsync(Answers, OnStreamDelta, ct);
                 // ...but if streaming fails for any reason, fall back to the proven non-streaming path.
-                if (!result.Success)
+                if (!result.Success && !ct.IsCancellationRequested)
                 {
-                    result = await Roadmap.GenerateAsync(Answers);
+                    result = await Roadmap.GenerateAsync(Answers, ct);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                return; // user navigated away mid-generation: don't render or save a phantom record
             }
             catch
             {
-                result = await Roadmap.GenerateAsync(Answers);
+                if (ct.IsCancellationRequested) return;
+                result = await Roadmap.GenerateAsync(Answers, ct);
             }
 
             _result = result;
@@ -408,6 +423,10 @@
             {
                 SaveHistory(result);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            // cancelled during the fallback call — nothing to render or save
         }
         finally
         {
@@ -451,13 +470,17 @@
         try { t?.Cancel(); t?.Dispose(); } catch { /* ignore */ }
     }
 
-    public void Dispose() => StopTicker();
+    public void Dispose()
+    {
+        StopTicker();
+        // Abort an in-flight Claude call so navigating away doesn't burn tokens or write a
+        // phantom history record for a roadmap nobody will see.
+        try { _genCts?.Cancel(); _genCts?.Dispose(); } catch { /* ignore */ }
+    }
 
     private void StartOver()
     {
-        ResetAnswers();
-        _result = null;
-        CurrentStep = 1;
+        State.ResetAll();
     }
 
     private void BackToReviewFromResult()

@@ -160,7 +160,11 @@
     [Parameter] public EventCallback OnStartOver { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
 
-    private readonly HashSet<string> _checked = new();
+    // When the host supplies a shared set (the wizard does), ticked steps survive navigation.
+    // History's read-only view supplies none, so it uses its own throwaway set.
+    [Parameter] public HashSet<string>? CheckedSteps { get; set; }
+    private readonly HashSet<string> _checkedLocal = new();
+    private HashSet<string> _checked => CheckedSteps ?? _checkedLocal;
     private static readonly string[] PhaseColors = { "#16a34a", "#7c3aed", "#2563eb", "#ea580c", "#0891b2", "#db2777" };
 
     // Null-safe views over the roadmap so a stray null collection (from the model, or an old
