@@ -112,6 +112,10 @@ public class HistoryService
                 : record.QuestionnaireVersion;
             record.InputText ??= "";
             record.SystemInstruction ??= "";
+            // Older snapshots predate the editable field but always used this same built-in style.
+            record.OutputStyleInstruction = string.IsNullOrWhiteSpace(record.OutputStyleInstruction)
+                ? DefaultPrompt.OutputStyleInstruction
+                : record.OutputStyleInstruction;
             record.RawOutput ??= "";
 
             record.Input ??= new AssessmentAnswers();

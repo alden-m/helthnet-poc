@@ -1,12 +1,14 @@
 namespace FindMyPath.Poc.Services;
 
 /// <summary>
-/// The default system instruction (Appendix A of the spec), split into two parts:
+/// The default prompt guidance (Appendix A of the spec), split into three parts:
 /// <list type="bullet">
 /// <item><see cref="SystemInstruction"/> — the tunable guidance shown/editable in the Settings tab.</item>
 /// <item><see cref="OutputFormatInstruction"/> — the mandatory JSON-output contract. It is a fixed
 /// implementation detail: hidden from the Settings UI and always appended to the system prompt at
 /// request time so the response is always parseable, no matter how the editable part is tuned.</item>
+/// <item><see cref="OutputStyleInstruction"/> — the default length and organization guidance shown
+/// in the Settings tab. A saved custom value replaces it; a blank value falls back to this default.</item>
 /// </list>
 /// </summary>
 public static class DefaultPrompt
@@ -83,8 +85,31 @@ empty string or empty array when a value genuinely does not apply.
           "estimatedTimeline": "...", "estimatedCost": "..." } ] } ],
   "notes": [ "..." ]
 }
+""";
+
+    /// <summary>
+    /// Default roadmap length and organization guidance. This is independently editable in Settings;
+    /// blank or whitespace-only settings resolve back to this value.
+    /// </summary>
+    public const string OutputStyleInstruction = """
 Write a 2-3 sentence summary. Aim for 3-5 phases with 2-4 steps each, ordered
 chronologically. Keep each step description to 1-2 concise sentences and notes
 to at most 4 non-duplicative items.
 """;
+
+    /// <summary>Returns the custom output style, or the code default when it is blank.</summary>
+    public static string ResolveOutputStyleInstruction(string? outputStyleInstruction) =>
+        string.IsNullOrWhiteSpace(outputStyleInstruction)
+            ? OutputStyleInstruction
+            : outputStyleInstruction.Trim();
+
+    /// <summary>Composes the editable guidance, fixed JSON contract, and effective output style.</summary>
+    public static string BuildSystemInstruction(string? systemInstruction, string? outputStyleInstruction)
+    {
+        var style = ResolveOutputStyleInstruction(outputStyleInstruction);
+        var formatAndStyle = $"{OutputFormatInstruction.TrimEnd()}\n{style}";
+        return string.IsNullOrWhiteSpace(systemInstruction)
+            ? formatAndStyle
+            : $"{systemInstruction.TrimEnd()}\n\n{formatAndStyle}";
+    }
 }

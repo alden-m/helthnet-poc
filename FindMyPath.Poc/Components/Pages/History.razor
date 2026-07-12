@@ -107,6 +107,7 @@
         QuestionnaireVersion = r.QuestionnaireVersion,
         GeneratedAtUtc = r.TimestampUtc,
         SystemInstruction = r.SystemInstruction ?? "",
+        OutputStyleInstruction = r.OutputStyleInstruction ?? "",
         UserMessage = r.InputText ?? "",
         Attachments = r.Attachments?.OfType<AttachmentInfo>().ToList() ?? new(),
     };

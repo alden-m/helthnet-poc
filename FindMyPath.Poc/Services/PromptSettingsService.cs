@@ -5,10 +5,11 @@ using Microsoft.Extensions.Configuration;
 namespace FindMyPath.Poc.Services;
 
 /// <summary>
-/// Runtime tuning (system instruction, model, reference-file mode, effort, and output cap) persisted to the project-relative
-/// <c>app_data/settings.json</c>. Defaults come from code — <see cref="DefaultPrompt.SystemInstruction"/> and
-/// <see cref="ModelCatalog.DefaultModel"/> — not from appsettings.json. The only thing read from configuration
-/// is the API key (Anthropic:ApiKey, or the ANTHROPIC_API_KEY env var); it is never written to app_data.
+/// Runtime tuning (instructions, model, reference-file mode, effort, and output cap) persisted to the project-relative
+/// <c>app_data/settings.json</c>. Defaults come from code — <see cref="DefaultPrompt.SystemInstruction"/>,
+/// <see cref="DefaultPrompt.OutputStyleInstruction"/>, and <see cref="ModelCatalog.DefaultModel"/> — not from
+/// appsettings.json. The only thing read from configuration is the API key (Anthropic:ApiKey, or the
+/// ANTHROPIC_API_KEY env var); it is never written to app_data.
 /// Never crashes on I/O.
 /// </summary>
 public class PromptSettingsService
@@ -52,13 +53,17 @@ public class PromptSettingsService
     public bool HasApiKey => !string.IsNullOrWhiteSpace(ApiKey);
 
     public bool Save(string systemInstruction, string model, bool includeKnowledgeBase,
-        string effort, int maxOutputTokens)
+        string effort, int maxOutputTokens, string? outputStyleInstruction = null)
     {
         lock (_lock)
         {
             _settings.SystemInstruction = string.IsNullOrWhiteSpace(systemInstruction)
                 ? DefaultSystem()
                 : StripMandatoryFormat(systemInstruction);
+            // null means an older caller did not supply this newly-added field; an explicit blank is
+            // persisted and resolves to the code default only when the generation request is built.
+            if (outputStyleInstruction is not null)
+                _settings.OutputStyleInstruction = outputStyleInstruction;
             _settings.Model = NormalizeModel(model);
             _settings.IncludeKnowledgeBase = includeKnowledgeBase;
             _settings.Effort = GenerationTuningCatalog.NormalizeEffort(effort);
@@ -87,6 +92,8 @@ public class PromptSettingsService
 
     private static string DefaultSystem() => DefaultPrompt.SystemInstruction;
 
+    private static string DefaultOutputStyle() => DefaultPrompt.OutputStyleInstruction;
+
     /// <summary>
     /// Removes the mandatory JSON-output contract from an instruction if a legacy settings.json still
     /// carries it inline, so it never resurfaces in the editable Settings textarea. The contract is
@@ -114,6 +121,9 @@ public class PromptSettingsService
                     s.SystemInstruction = string.IsNullOrWhiteSpace(s.SystemInstruction)
                         ? DefaultSystem()
                         : StripMandatoryFormat(s.SystemInstruction);
+                    // A missing/null property is from an older settings file. Preserve an explicit blank,
+                    // which means "use the current code default" at request time.
+                    s.OutputStyleInstruction ??= DefaultOutputStyle();
                     s.Model = NormalizeModel(s.Model);
                     s.Effort = GenerationTuningCatalog.NormalizeEffort(s.Effort);
                     s.MaxOutputTokens = GenerationTuningCatalog.NormalizeMaxOutputTokens(s.MaxOutputTokens);
@@ -130,6 +140,7 @@ public class PromptSettingsService
         {
             Model = DefaultModel(),
             SystemInstruction = DefaultSystem(),
+            OutputStyleInstruction = DefaultOutputStyle(),
             IncludeKnowledgeBase = false,
             Effort = GenerationTuningCatalog.DefaultEffort,
             MaxOutputTokens = GenerationTuningCatalog.DefaultMaxOutputTokens,
@@ -162,6 +173,7 @@ public class PromptSettingsService
     {
         Model = s.Model,
         SystemInstruction = s.SystemInstruction,
+        OutputStyleInstruction = s.OutputStyleInstruction,
         IncludeKnowledgeBase = s.IncludeKnowledgeBase,
         Effort = s.Effort,
         MaxOutputTokens = s.MaxOutputTokens,

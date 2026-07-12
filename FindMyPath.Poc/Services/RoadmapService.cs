@@ -166,6 +166,7 @@ public class RoadmapService
         public required string Model { get; init; }
         public required string System { get; init; }         // includes the hidden JSON-output contract
         public required string EditableSystem { get; init; } // the visible-only instruction, for the snapshot
+        public required string OutputStyle { get; init; }    // effective editable style, for the snapshot
         public required string Effort { get; init; }
         public required int MaxOutputTokens { get; init; }
         public required bool IncludeKnowledgeBase { get; init; }
@@ -182,6 +183,7 @@ public class RoadmapService
             QuestionnaireVersion = AssessmentAnswers.QuestionnaireVersion,
             GeneratedAtUtc = DateTime.UtcNow.ToString("o"),
             SystemInstruction = EditableSystem,
+            OutputStyleInstruction = OutputStyle,
             UserMessage = UserMessage,
             Attachments = Attachments,
         };
@@ -196,8 +198,9 @@ public class RoadmapService
         var useKnowledgeBase = includeKnowledgeBase ?? settings.IncludeKnowledgeBase;
 
         var editable = (settings.SystemInstruction ?? "").TrimEnd();
-        // Structured outputs enforce the JSON shape; the appended contract controls useful content/length.
-        var system = $"{editable}\n\n{DefaultPrompt.OutputFormatInstruction}";
+        var outputStyle = DefaultPrompt.ResolveOutputStyleInstruction(settings.OutputStyleInstruction);
+        // Structured outputs enforce the JSON shape; the independently editable style controls length and organization.
+        var system = DefaultPrompt.BuildSystemInstruction(editable, outputStyle);
 
         var userMessage = AssessmentFormatter.ToUserMessage(answers);
 
@@ -210,6 +213,7 @@ public class RoadmapService
             Model = model,
             System = system,
             EditableSystem = editable,
+            OutputStyle = outputStyle,
             Effort = effort,
             MaxOutputTokens = maxOutputTokens,
             IncludeKnowledgeBase = useKnowledgeBase,

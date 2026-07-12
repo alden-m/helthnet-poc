@@ -30,6 +30,7 @@ public class HistoryServiceTests
         Assert.Equal(AssessmentAnswers.QuestionnaireVersion, loaded.QuestionnaireVersion);
         Assert.Equal(123, loaded.Usage.InputTokens);
         Assert.Equal(0.42m, loaded.CostUsd);
+        Assert.Equal("Concise custom output", loaded.OutputStyleInstruction);
         Assert.Single(loaded.Attachments);
         Assert.Equal("guide.md", loaded.Attachments[0].FileName);
 
@@ -97,6 +98,7 @@ public class HistoryServiceTests
         Assert.NotNull(loaded.Input.LearningNeeds);
         Assert.NotNull(loaded.InputText);
         Assert.NotNull(loaded.SystemInstruction);
+        Assert.Equal(DefaultPrompt.OutputStyleInstruction, loaded.OutputStyleInstruction);
         Assert.NotNull(loaded.Attachments);
         Assert.NotNull(loaded.RawOutput);
         Assert.NotNull(loaded.Usage);
@@ -199,6 +201,7 @@ public class HistoryServiceTests
         },
         InputText = "Questionnaire input",
         SystemInstruction = "System prompt",
+        OutputStyleInstruction = "Concise custom output",
         Attachments =
         [
             new AttachmentInfo { FileName = "guide.md", Bytes = 12, Kind = "text", Sent = true },

@@ -1,3 +1,5 @@
+using FindMyPath.Poc.Services;
+
 namespace FindMyPath.Poc.Models;
 
 /// <summary>Tunable, non-secret generation settings persisted to app-data/settings.json.</summary>
@@ -17,4 +19,8 @@ public class PromptSettings
     /// <summary>The editable system instruction (guidance only). The mandatory JSON-output contract is
     /// appended at request time from <see cref="DefaultPrompt.OutputFormatInstruction"/> and never stored here.</summary>
     public string SystemInstruction { get; set; } = "";
+
+    /// <summary>Editable roadmap length and organization guidance. Blank values use
+    /// <see cref="DefaultPrompt.OutputStyleInstruction"/> when a request is built.</summary>
+    public string OutputStyleInstruction { get; set; } = DefaultPrompt.OutputStyleInstruction;
 }

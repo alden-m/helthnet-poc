@@ -137,7 +137,9 @@
         <div class="what-sent-body">
             <h4>Editable system instruction</h4>
             <pre>@Result.SystemInstruction</pre>
-            <p class="schema-note">A fixed roadmap JSON schema and concise output limits were also enforced automatically so tuning cannot break the result layout.</p>
+            <h4>Effective output style</h4>
+            <pre>@Result.OutputStyleInstruction</pre>
+            <p class="schema-note">A fixed roadmap JSON schema was also enforced automatically so tuning cannot break the result layout.</p>
             <h4>User message</h4>
             <pre>@Result.UserMessage</pre>
             @if (Attachments.Count > 0)
