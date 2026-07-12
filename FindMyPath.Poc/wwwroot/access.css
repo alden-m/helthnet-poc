@@ -1,0 +1,401 @@
+:root {
+    color-scheme: light;
+    --access-brand: #4f46e5;
+    --access-brand-dark: #4338ca;
+    --access-brand-soft: #eef2ff;
+    --access-ink: #0f172a;
+    --access-muted: #526077;
+    --access-line: #dfe3ec;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    min-height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--access-ink);
+    background: #f5f6fb;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+.access-page {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+    padding: 2.25rem 1.25rem 1.5rem;
+    background:
+        radial-gradient(circle at 50% -10%, rgba(99, 102, 241, .14), transparent 34rem),
+        linear-gradient(145deg, #f8f9fd 0%, #f2f4fa 55%, #eef1f8 100%);
+}
+
+.access-backdrop {
+    position: absolute;
+    z-index: -1;
+    border-radius: 999px;
+    filter: blur(2px);
+    pointer-events: none;
+}
+
+.access-backdrop-one {
+    top: -12rem;
+    right: -9rem;
+    width: 27rem;
+    height: 27rem;
+    border: 1px solid rgba(79, 70, 229, .09);
+    box-shadow: inset 0 0 0 4.5rem rgba(79, 70, 229, .025);
+}
+
+.access-backdrop-two {
+    bottom: -15rem;
+    left: -11rem;
+    width: 31rem;
+    height: 31rem;
+    border: 1px solid rgba(71, 85, 105, .07);
+    box-shadow: inset 0 0 0 6rem rgba(71, 85, 105, .018);
+}
+
+.access-card {
+    width: min(100%, 32rem);
+    overflow: hidden;
+    background: rgba(255, 255, 255, .98);
+    border: 1px solid rgba(213, 218, 230, .9);
+    border-radius: 1.25rem;
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, .04),
+        0 18px 48px rgba(30, 41, 59, .11);
+}
+
+.access-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.15rem 1.5rem;
+    border-bottom: 1px solid #edf0f5;
+    background: rgba(250, 251, 254, .88);
+}
+
+.client-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: .62rem;
+    color: #29324a;
+    font-size: .9rem;
+    font-weight: 750;
+    letter-spacing: -.01em;
+}
+
+.client-mark-icon {
+    display: grid;
+    place-items: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    color: var(--access-brand);
+    background: var(--access-brand-soft);
+    border-radius: .58rem;
+}
+
+.client-mark svg {
+    width: 1.2rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+}
+
+.environment-badge {
+    color: #4f46e5;
+    font-size: .66rem;
+    font-weight: 800;
+    letter-spacing: .075em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.access-content {
+    padding: 2rem 2.25rem 2.15rem;
+}
+
+.lock-icon {
+    display: grid;
+    place-items: center;
+    width: 3.25rem;
+    height: 3.25rem;
+    margin-bottom: 1.35rem;
+    color: var(--access-brand);
+    background: var(--access-brand-soft);
+    border: 1px solid #dde2ff;
+    border-radius: 1rem;
+    box-shadow: 0 6px 16px rgba(79, 70, 229, .1);
+}
+
+.lock-icon svg {
+    width: 1.65rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+}
+
+.eyebrow {
+    margin: 0 0 .5rem;
+    color: var(--access-brand-dark);
+    font-size: .73rem;
+    font-weight: 800;
+    letter-spacing: .075em;
+    text-transform: uppercase;
+}
+
+h1 {
+    margin: 0 0 .9rem;
+    color: var(--access-ink);
+    font-size: clamp(1.7rem, 5vw, 2rem);
+    font-weight: 760;
+    letter-spacing: -.035em;
+    line-height: 1.15;
+}
+
+.access-summary,
+.access-instruction {
+    color: var(--access-muted);
+    font-size: .94rem;
+    line-height: 1.62;
+}
+
+.access-summary {
+    margin: 0;
+}
+
+.access-summary strong {
+    color: #303b52;
+    font-weight: 700;
+}
+
+.access-instruction {
+    margin: .75rem 0 0;
+}
+
+.access-form {
+    margin-top: 1.65rem;
+}
+
+.field-group label {
+    display: block;
+    margin-bottom: .48rem;
+    color: #28344a;
+    font-size: .86rem;
+    font-weight: 700;
+}
+
+.pin-field {
+    position: relative;
+}
+
+.pin-field > svg {
+    position: absolute;
+    top: 50%;
+    left: .95rem;
+    width: 1.15rem;
+    translate: 0 -50%;
+    fill: none;
+    stroke: #718096;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+    pointer-events: none;
+}
+
+.pin-field input {
+    display: block;
+    width: 100%;
+    height: 3.15rem;
+    padding: .75rem 1rem .75rem 2.85rem;
+    color: var(--access-ink);
+    background: #fff;
+    border: 1px solid #cbd2df;
+    border-radius: .72rem;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.pin-field input::placeholder {
+    color: #98a2b3;
+}
+
+.pin-field input:focus {
+    border-color: var(--access-brand);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, .15);
+}
+
+.pin-field:focus-within > svg {
+    stroke: var(--access-brand);
+}
+
+.pin-field-invalid input {
+    border-color: #dc2626;
+}
+
+.pin-field-invalid input:focus {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, .12);
+}
+
+.field-help,
+.pin-error {
+    display: block;
+    margin-top: .45rem;
+    font-size: .78rem;
+    line-height: 1.45;
+}
+
+.field-help {
+    color: #69768a;
+}
+
+.pin-error {
+    color: #b42318;
+    font-weight: 600;
+}
+
+.continue-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    width: 100%;
+    min-height: 3.15rem;
+    margin-top: 1.15rem;
+    padding: .78rem 1.2rem;
+    color: #fff;
+    background: linear-gradient(180deg, #5850e8 0%, var(--access-brand-dark) 100%);
+    border: 0;
+    border-radius: .72rem;
+    box-shadow: 0 6px 15px rgba(67, 56, 202, .2);
+    cursor: pointer;
+    font-size: .92rem;
+    font-weight: 750;
+    transition: translate .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+
+.continue-button svg {
+    width: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+}
+
+.continue-button:hover {
+    filter: brightness(1.04);
+    box-shadow: 0 8px 18px rgba(67, 56, 202, .26);
+    translate: 0 -1px;
+}
+
+.continue-button:active {
+    translate: 0 0;
+}
+
+.continue-button:focus-visible {
+    outline: 3px solid rgba(79, 70, 229, .28);
+    outline-offset: 3px;
+}
+
+.access-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
+    padding: .85rem 1.25rem;
+    color: #69768a;
+    background: #fafbfc;
+    border-top: 1px solid #edf0f5;
+    font-size: .72rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.access-footer svg {
+    width: .95rem;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: #64748b;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+}
+
+.footer-separator {
+    color: #b6beca;
+}
+
+.prepared-by {
+    position: absolute;
+    bottom: .65rem;
+    left: 50%;
+    margin: 0;
+    translate: -50% 0;
+    color: #7b8799;
+    font-size: .7rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 540px) {
+    .access-page {
+        place-items: start center;
+        overflow: auto;
+        padding: 1rem .8rem 2.75rem;
+    }
+
+    .access-card {
+        border-radius: 1rem;
+    }
+
+    .access-header {
+        padding: 1rem 1.1rem;
+    }
+
+    .environment-badge {
+        display: none;
+    }
+
+    .access-content {
+        padding: 1.5rem 1.25rem 1.65rem;
+    }
+
+    .access-footer {
+        flex-wrap: wrap;
+        padding-inline: .8rem;
+    }
+
+    .prepared-by {
+        position: static;
+        margin-top: 1rem;
+        translate: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+    }
+}

@@ -125,7 +125,7 @@ function Wait-UrlReady {
         try {
             $response = Invoke-WebRequest -Uri $Url -Method Get -TimeoutSec 5 -SkipCertificateCheck -SkipHttpErrorCheck
             if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 300 -and
-                $response.Content -match '<title>Find My Path</title>') {
+                $response.Content -match '<title>(Secure Access \| )?Find My Path</title>') {
                 return $true
             }
         }

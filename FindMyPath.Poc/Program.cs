@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using FindMyPath.Poc.Components;
 using FindMyPath.Poc.Services;
 
@@ -16,8 +17,36 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddRazorPages();
+
+const string accessCookieScheme = AccessGateService.AuthenticationScheme;
+builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = accessCookieScheme;
+        options.DefaultChallengeScheme = accessCookieScheme;
+        options.DefaultSignInScheme = accessCookieScheme;
+    })
+    .AddCookie(accessCookieScheme, options =>
+    {
+        options.Cookie.Name = AccessGateService.CookieName;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.IsEssential = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        // The local demo runner intentionally supports HTTP. Outside Development, the
+        // cookie is always HTTPS-only even when the app sits behind a reverse proxy.
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.LoginPath = "/access";
+        options.ReturnUrlParameter = "returnUrl";
+        options.ExpireTimeSpan = TimeSpan.FromDays(180);
+        options.SlidingExpiration = true;
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddSingleton<AppPaths>();
+builder.Services.AddSingleton<AccessGateService>();
 builder.Services.AddSingleton<PromptSettingsService>();
 builder.Services.AddSingleton<KnowledgeBaseService>();
 builder.Services.AddSingleton<HistoryService>();
@@ -49,11 +78,15 @@ if (hasHttpsEndpoint)
     app.UseHttpsRedirection();
 }
 
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+app.MapRazorPages();
 
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .RequireAuthorization();
 
 app.Run();
