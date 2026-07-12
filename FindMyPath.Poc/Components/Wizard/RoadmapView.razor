@@ -137,6 +137,20 @@
             <pre>@Result.SystemInstruction</pre>
             <h4>User message</h4>
             <pre>@Result.UserMessage</pre>
+            @if (Result.Attachments.Count > 0)
+            {
+                <h4>Knowledge-base files</h4>
+                <div class="attach-list">
+                    @foreach (var a in Result.Attachments)
+                    {
+                        <div class="attach-item">
+                            <span class="attach-badge @(a.Sent ? "" : "not-sent")">@(a.Sent ? a.Kind : "not sent")</span>
+                            <span class="attach-name">@a.FileName</span>
+                            <span class="attach-note">@a.SizeDisplay@(string.IsNullOrEmpty(a.Note) ? "" : $" — {a.Note}")</span>
+                        </div>
+                    }
+                </div>
+            }
             <div class="what-sent-meta">
                 Model: @ModelCatalog.DisplayName(Result.Model) · @Result.Usage.InputTokens.ToString("N0") in / @Result.Usage.OutputTokens.ToString("N0") out tokens · estimated cost @Result.CostUsd.ToString("C4")
             </div>

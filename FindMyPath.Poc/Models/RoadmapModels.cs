@@ -48,7 +48,11 @@ public class RoadmapResult
     public bool ParsedOk => Roadmap is not null;
 
     // Exactly what was sent to the AI (for the "what was sent" panel and history snapshot).
+    // SystemInstruction here is the editable/visible instruction only — the mandatory JSON-output
+    // contract is appended internally at request time and deliberately not surfaced.
     public string SystemInstruction { get; set; } = "";
     public string UserMessage { get; set; } = "";
-    public string? ReferenceMaterial { get; set; }
+
+    /// <summary>Knowledge-base files attached to this request (name, kind, whether they were sent).</summary>
+    public List<AttachmentInfo> Attachments { get; set; } = new();
 }

@@ -6,7 +6,7 @@ namespace FindMyPath.Poc.Services;
 /// <summary>Serializes the (visible, answered) questionnaire into a readable Q&amp;A block for the AI.</summary>
 public static class AssessmentFormatter
 {
-    public static string ToUserMessage(AssessmentAnswers a, string? referenceMaterial)
+    public static string ToUserMessage(AssessmentAnswers a)
     {
         var sb = new StringBuilder();
         sb.AppendLine("Below are an internationally educated health professional's answers to the HealthNet \"Find My Path\" intake questionnaire. Draft their personalised Canadian licensing roadmap.");
@@ -66,12 +66,6 @@ public static class AssessmentFormatter
             sb.AppendLine("## Additional Information");
             sb.AppendLine(a.AdditionalInfo.Trim());
             sb.AppendLine();
-        }
-
-        if (!string.IsNullOrWhiteSpace(referenceMaterial))
-        {
-            sb.AppendLine("## Reference material provided by HealthNet");
-            sb.AppendLine(referenceMaterial.Trim());
         }
 
         return sb.ToString().TrimEnd();

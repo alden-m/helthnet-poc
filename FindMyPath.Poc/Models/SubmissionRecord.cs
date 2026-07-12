@@ -17,7 +17,8 @@ public class SubmissionRecord
 
     // Prompt snapshot
     public string SystemInstruction { get; set; } = "";
-    public string? ReferenceMaterial { get; set; }
+    public string? ReferenceMaterial { get; set; } // legacy: older snapshots stored pasted reference text here
+    public List<AttachmentInfo> Attachments { get; set; } = new(); // knowledge-base files sent with this run
 
     // Output
     public RoadmapDto? Output { get; set; } // categorized phases, each with sub-steps

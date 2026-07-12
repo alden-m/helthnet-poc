@@ -1,6 +1,14 @@
 namespace FindMyPath.Poc.Services;
 
-/// <summary>The default system instruction (Appendix A of the spec). Tunable in the Settings tab.</summary>
+/// <summary>
+/// The default system instruction (Appendix A of the spec), split into two parts:
+/// <list type="bullet">
+/// <item><see cref="SystemInstruction"/> — the tunable guidance shown/editable in the Settings tab.</item>
+/// <item><see cref="OutputFormatInstruction"/> — the mandatory JSON-output contract. It is a fixed
+/// implementation detail: hidden from the Settings UI and always appended to the system prompt at
+/// request time so the response is always parseable, no matter how the editable part is tuned.</item>
+/// </list>
+/// </summary>
 public static class DefaultPrompt
 {
     public const string SystemInstruction = """
@@ -9,7 +17,8 @@ internationally educated health professionals (IEHPs) to licensure and practice
 in Canada.
 
 You receive one message containing (1) a user's answers to a structured intake
-questionnaire and (2) optionally, reference material provided by HealthNet.
+questionnaire and (2) optionally, reference material provided by HealthNet
+(documents, PDFs, or images attached to the request).
 
 Your job:
 - Identify the applicable Canadian licensing pathway for this person's
@@ -37,7 +46,13 @@ Rules:
 - Do not invent requirements. If information is uncertain or the user's
   situation is ambiguous, put a note in "notes" rather than guessing silently.
 - Write for the user: encouraging, plain language, second person.
+""";
 
+    /// <summary>
+    /// The mandatory output contract. Never shown in the Settings UI and never stored in the editable
+    /// prompt — <see cref="RoadmapService"/> appends it to the system prompt on every request.
+    /// </summary>
+    public const string OutputFormatInstruction = """
 Output format:
 Respond with a single fenced JSON code block and nothing else, using exactly
 this shape:

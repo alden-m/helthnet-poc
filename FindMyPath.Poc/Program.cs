@@ -19,6 +19,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddSingleton<AppPaths>();
 builder.Services.AddSingleton<PromptSettingsService>();
+builder.Services.AddSingleton<KnowledgeBaseService>();
 builder.Services.AddSingleton<HistoryService>();
 builder.Services.AddSingleton<RoadmapService>();
 // Per-circuit wizard/roadmap state so it survives navigating to Settings/History and back.

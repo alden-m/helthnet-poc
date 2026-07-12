@@ -1,6 +1,7 @@
 @page "/settings"
 @rendermode InteractiveServer
 @inject PromptSettingsService SettingsService
+@inject KnowledgeBaseService KnowledgeBase
 
 <PageTitle>Settings</PageTitle>
 
@@ -22,17 +23,8 @@
 
         <div class="question">
             <label class="question-label">System instruction</label>
-            <textarea class="fmp-input mono" rows="18" @bind="_systemInstruction"></textarea>
-            <div class="hint">This is the AI's core instruction. Edit it, save, and regenerate to see how the output changes.</div>
-        </div>
-
-        <div class="question">
-            <label class="question-label">Additional reference material <span class="label-optional">(optional — appended to every request)</span></label>
-            <textarea class="fmp-input" rows="6" @bind="_referenceMaterial" placeholder="e.g. paste a document about specific licensing bodies, and the AI will treat it as authoritative HealthNet guidance..."></textarea>
-            <div style="margin-top:.7rem; display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;">
-                <InputFile OnChange="OnUpload" accept=".txt,.md" />
-                <span class="hint" style="margin:0">Upload a .txt or .md file to load its text into the box above.</span>
-            </div>
+            <textarea class="fmp-input mono" rows="16" @bind="_systemInstruction"></textarea>
+            <div class="hint">This is the AI's core instruction. Edit it, save, and regenerate to see how the output changes. The output-format rules are applied automatically on every request.</div>
         </div>
 
         <div class="wizard-divider"></div>
@@ -45,25 +37,76 @@
             }
         </div>
     </div>
+
+    <div class="section-card">
+        <div class="question" style="margin-bottom:.5rem">
+            <label class="question-label">Knowledge base <span class="label-optional">(sent to the AI with every roadmap)</span></label>
+            <div class="hint" style="margin-bottom:.75rem">Upload documents HealthNet wants the AI to treat as authoritative reference material.</div>
+
+            <div class="kb-warning">
+                <strong>Tip:</strong> plain-text files (<code>.txt</code>, <code>.md</code>) work best — they're read most reliably and cost the fewest tokens. <strong>Word</strong> (<code>.docx</code>) and <strong>PDF</strong> files are supported next; <strong>images</strong> and other file types are accepted but cost more and may not be read. Any file type is welcome. Limit: @MaxMb MB per file (the whole request is capped at 32 MB by the AI service).
+            </div>
+
+            @if (_files.Count == 0)
+            {
+                <div class="kb-empty">No files yet. Upload one below and it will be sent with every roadmap.</div>
+            }
+            else
+            {
+                <div class="kb-list">
+                    @foreach (var f in _files)
+                    {
+                        <div class="kb-item">
+                            <div class="kb-item-main">
+                                <div class="kb-item-name">@f.Name</div>
+                                <div class="kb-item-sub">@f.SizeDisplay · @KindLabel(f)</div>
+                            </div>
+                            <button class="kb-remove" @onclick="() => DeleteFile(f.Name)">Delete</button>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="kb-toolbar">
+                <label class="kb-upload-label">
+                    <span>@(_uploading ? "Uploading…" : "Upload files")</span>
+                    <InputFile OnChange="OnUpload" multiple disabled="@_uploading" />
+                </label>
+                @if (_files.Count > 0)
+                {
+                    <button class="kb-clear-all" @onclick="DeleteAll" disabled="@_uploading">Delete all</button>
+                }
+                @if (_kbStatus is not null)
+                {
+                    <span class="save-status">@_kbStatus</span>
+                }
+            </div>
+        </div>
+    </div>
 </div>
 
 @code {
     private string _model = ModelCatalog.DefaultModel;
     private string _systemInstruction = "";
-    private string _referenceMaterial = "";
     private string? _status;
+
+    private List<KbFile> _files = new();
+    private string? _kbStatus;
+    private bool _uploading;
+
+    private static int MaxMb => (int)(KnowledgeBaseService.MaxFileBytes / (1024 * 1024));
 
     protected override void OnInitialized()
     {
         var s = SettingsService.Current;
         _model = s.Model;
         _systemInstruction = s.SystemInstruction;
-        _referenceMaterial = s.ReferenceMaterial;
+        _files = KnowledgeBase.List();
     }
 
     private void SaveSettings()
     {
-        SettingsService.Save(_systemInstruction, _model, _referenceMaterial);
+        SettingsService.Save(_systemInstruction, _model);
         _status = "Saved.";
     }
 
@@ -75,17 +118,70 @@
 
     private async Task OnUpload(InputFileChangeEventArgs e)
     {
+        _uploading = true;
+        _kbStatus = null;
+        var saved = 0;
+        var failures = new List<string>();
         try
         {
-            var file = e.File;
-            if (file is null) return;
-            using var reader = new StreamReader(file.OpenReadStream(maxAllowedSize: 1024 * 1024));
-            _referenceMaterial = await reader.ReadToEndAsync();
-            _status = $"Loaded {file.Name} ({_referenceMaterial.Length:N0} characters). Click Save to keep it.";
+            foreach (var file in e.GetMultipleFiles(maximumFileCount: 50))
+            {
+                try
+                {
+                    // Allow a hair over the cap so KnowledgeBaseService reports the friendly size message.
+                    await using var stream = file.OpenReadStream(maxAllowedSize: KnowledgeBaseService.MaxFileBytes + 1);
+                    await KnowledgeBase.SaveAsync(file.Name, stream);
+                    saved++;
+                }
+                catch (InvalidOperationException ex)
+                {
+                    failures.Add(ex.Message);
+                }
+                catch
+                {
+                    failures.Add($"Could not read \"{file.Name}\" (max {MaxMb} MB).");
+                }
+            }
         }
-        catch
+        finally
         {
-            _status = "Could not read that file (max 1 MB, .txt or .md).";
+            _uploading = false;
+            _files = KnowledgeBase.List();
         }
+
+        _kbStatus = BuildUploadStatus(saved, failures);
     }
+
+    private static string BuildUploadStatus(int saved, List<string> failures)
+    {
+        var parts = new List<string>();
+        if (saved > 0) parts.Add($"Uploaded {saved} file{(saved == 1 ? "" : "s")}.");
+        parts.AddRange(failures);
+        return parts.Count > 0 ? string.Join(" ", parts) : "No files uploaded.";
+    }
+
+    private void DeleteFile(string name)
+    {
+        KnowledgeBase.Delete(name);
+        _files = KnowledgeBase.List();
+        _kbStatus = $"Deleted {name}.";
+    }
+
+    private void DeleteAll()
+    {
+        var n = KnowledgeBase.DeleteAll();
+        _files = KnowledgeBase.List();
+        _kbStatus = n > 0 ? $"Deleted {n} file{(n == 1 ? "" : "s")}." : "Nothing to delete.";
+    }
+
+    // A hint at how the file will be sent, so the user understands the tip above in context.
+    private static string KindLabel(KbFile f) => f.Extension switch
+    {
+        ".txt" or ".md" or ".markdown" or ".text" or ".csv" or ".tsv" or ".json" or ".xml"
+            or ".html" or ".htm" or ".yaml" or ".yml" or ".log" or ".rtf" => "text",
+        ".docx" => "Word document",
+        ".pdf" => "PDF",
+        ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" => "image",
+        _ => "sent as text if readable"
+    };
 }

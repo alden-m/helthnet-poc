@@ -4,6 +4,8 @@ namespace FindMyPath.Poc.Models;
 public class PromptSettings
 {
     public string Model { get; set; } = ModelCatalog.DefaultModel;
+
+    /// <summary>The editable system instruction (guidance only). The mandatory JSON-output contract is
+    /// appended at request time from <see cref="DefaultPrompt.OutputFormatInstruction"/> and never stored here.</summary>
     public string SystemInstruction { get; set; } = "";
-    public string ReferenceMaterial { get; set; } = "";
 }

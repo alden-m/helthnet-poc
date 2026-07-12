@@ -14,16 +14,21 @@ public class AppPaths
     public string SettingsFile { get; }
     public string HistoryDir { get; }
 
+    /// <summary>Files uploaded in Settings that are sent to the AI as reference material with every request.</summary>
+    public string KnowledgeBaseDir { get; }
+
     public AppPaths(IWebHostEnvironment env)
     {
         DataDir = Path.Combine(env.ContentRootPath, "app_data");
         SettingsFile = Path.Combine(DataDir, "settings.json");
         HistoryDir = Path.Combine(DataDir, "history");
+        KnowledgeBaseDir = Path.Combine(DataDir, "knowledge-base");
     }
 
     public void EnsureDirs()
     {
         Directory.CreateDirectory(DataDir);
         Directory.CreateDirectory(HistoryDir);
+        Directory.CreateDirectory(KnowledgeBaseDir);
     }
 }

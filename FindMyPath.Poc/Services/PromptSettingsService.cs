@@ -49,13 +49,14 @@ public class PromptSettingsService
 
     public bool HasApiKey => !string.IsNullOrWhiteSpace(ApiKey);
 
-    public void Save(string systemInstruction, string model, string? referenceMaterial)
+    public void Save(string systemInstruction, string model)
     {
         lock (_lock)
         {
-            _settings.SystemInstruction = string.IsNullOrWhiteSpace(systemInstruction) ? DefaultSystem() : systemInstruction;
+            _settings.SystemInstruction = string.IsNullOrWhiteSpace(systemInstruction)
+                ? DefaultSystem()
+                : StripMandatoryFormat(systemInstruction);
             _settings.Model = string.IsNullOrWhiteSpace(model) ? DefaultModel() : model;
-            _settings.ReferenceMaterial = referenceMaterial ?? "";
             Persist();
         }
     }
@@ -75,7 +76,19 @@ public class PromptSettingsService
 
     private static string DefaultSystem() => DefaultPrompt.SystemInstruction;
 
-    private static string DefaultReference() => "";
+    /// <summary>
+    /// Removes the mandatory JSON-output contract from an instruction if a legacy settings.json still
+    /// carries it inline, so it never resurfaces in the editable Settings textarea. The contract is
+    /// re-appended at request time by <see cref="RoadmapService"/>.
+    /// </summary>
+    private static string StripMandatoryFormat(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return s;
+        var idx = s.IndexOf("Output format:", StringComparison.OrdinalIgnoreCase);
+        if (idx >= 0 && s.IndexOf("single fenced JSON", StringComparison.OrdinalIgnoreCase) > idx)
+            return s[..idx].TrimEnd();
+        return s;
+    }
 
     private PromptSettings Load()
     {
@@ -87,7 +100,9 @@ public class PromptSettingsService
                 var s = JsonSerializer.Deserialize<PromptSettings>(File.ReadAllText(_paths.SettingsFile), JsonOpts);
                 if (s is not null)
                 {
-                    if (string.IsNullOrWhiteSpace(s.SystemInstruction)) s.SystemInstruction = DefaultSystem();
+                    s.SystemInstruction = string.IsNullOrWhiteSpace(s.SystemInstruction)
+                        ? DefaultSystem()
+                        : StripMandatoryFormat(s.SystemInstruction);
                     if (string.IsNullOrWhiteSpace(s.Model)) s.Model = DefaultModel();
                     return s;
                 }
@@ -101,7 +116,6 @@ public class PromptSettingsService
         {
             Model = DefaultModel(),
             SystemInstruction = DefaultSystem(),
-            ReferenceMaterial = DefaultReference(),
         };
     }
 
@@ -122,6 +136,5 @@ public class PromptSettingsService
     {
         Model = s.Model,
         SystemInstruction = s.SystemInstruction,
-        ReferenceMaterial = s.ReferenceMaterial
     };
 }

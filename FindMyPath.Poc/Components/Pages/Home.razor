@@ -418,6 +418,28 @@
                 result = await Roadmap.GenerateAsync(Answers, ct);
             }
 
+            // Demo safety net: if a knowledge-base file makes the request fail (e.g. an image or
+            // PDF the AI can't process), regenerate once WITHOUT the files so a roadmap still appears.
+            if (!result.Success && !ct.IsCancellationRequested && result.Attachments.Any(a => a.Sent))
+            {
+                var attempted = result.Attachments;
+                var retry = await Roadmap.GenerateAsync(Answers, ct, includeKnowledgeBase: false);
+                if (retry.Success)
+                {
+                    retry.Attachments = attempted.Select(a => new AttachmentInfo
+                    {
+                        FileName = a.FileName,
+                        Bytes = a.Bytes,
+                        Kind = "not sent",
+                        Sent = false,
+                        Note = a.Sent
+                            ? "the AI couldn't process this file, so the roadmap was generated without it"
+                            : a.Note,
+                    }).ToList();
+                    result = retry;
+                }
+            }
+
             _result = result;
             if (result.Success)
             {
@@ -502,7 +524,7 @@
                 Input = Answers,
                 InputText = result.UserMessage,
                 SystemInstruction = result.SystemInstruction,
-                ReferenceMaterial = result.ReferenceMaterial,
+                Attachments = result.Attachments,
                 Output = result.Roadmap,
                 RawOutput = result.RawText,
                 ParsedOk = result.ParsedOk,

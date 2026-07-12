@@ -575,3 +575,72 @@ textarea.mono {
 .history-item-cost { font-weight: 700; color: var(--success-dark); white-space: nowrap; }
 .snapshot-meta { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; color: var(--muted); }
 .snapshot-meta strong { color: var(--ink); font-weight: 600; }
+/* ===== Knowledge base (Settings) ===== */
+.kb-warning {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-left: 4px solid #f59e0b;
+    border-radius: 10px;
+    padding: .85rem 1.1rem;
+    color: #713f12;
+    font-size: .9rem;
+    line-height: 1.55;
+    margin: .25rem 0 1rem;
+}
+.kb-warning strong { color: #78350f; }
+
+.kb-list { display: flex; flex-direction: column; gap: .5rem; margin: 0 0 1rem; }
+.kb-item {
+    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: .7rem .9rem;
+}
+.kb-item-main { min-width: 0; }
+.kb-item-name {
+    font-weight: 600; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46ch;
+}
+.kb-item-sub { color: var(--muted); font-size: .8rem; margin-top: .15rem; }
+.kb-remove {
+    flex: none; border: 1px solid #fecaca; background: #fff5f5; color: #b42318;
+    font-weight: 600; font-size: .85rem; border-radius: 8px; padding: .35rem .75rem; cursor: pointer;
+}
+.kb-remove:hover { background: #fee2e2; }
+
+.kb-empty {
+    color: var(--muted); background: var(--bg); border: 1px dashed var(--line);
+    border-radius: 10px; padding: 1rem 1.1rem; margin: 0 0 1rem;
+}
+
+.kb-toolbar { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.kb-upload-label {
+    position: relative; overflow: hidden;
+    display: inline-flex; align-items: center; gap: .4rem;
+    background: var(--brand); color: #fff; font-weight: 700;
+    border-radius: 10px; padding: .6rem 1.15rem; cursor: pointer;
+}
+.kb-upload-label:hover { background: var(--brand-dark); }
+/* The real file input invisibly covers the whole button, so a click anywhere on it
+   opens the native file dialog reliably across all browsers. */
+.kb-upload-label input[type="file"] {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    opacity: 0; cursor: pointer; font-size: 0;
+}
+.kb-upload-label input[type="file"]:disabled { cursor: default; }
+.kb-clear-all {
+    border: 1px solid #d0d5dd; background: #fff; color: #344054;
+    font-weight: 600; border-radius: 10px; padding: .6rem 1.15rem; cursor: pointer;
+}
+.kb-clear-all:hover { background: #f9fafb; }
+
+/* Attachment chips in the "what was sent" panel and history */
+.attach-list { display: flex; flex-direction: column; gap: .4rem; margin: .25rem 0 0; }
+.attach-item { display: flex; align-items: center; gap: .55rem; font-size: .88rem; color: #334155; }
+.attach-badge {
+    flex: none; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+    border-radius: 6px; padding: .12rem .45rem;
+    background: var(--brand-050); color: var(--brand-dark); border: 1px solid var(--brand-100);
+}
+.attach-badge.not-sent { background: #fef2f2; color: #b42318; border-color: #fecaca; }
+.attach-name { font-weight: 600; }
+.attach-note { color: var(--muted); font-size: .82rem; }
