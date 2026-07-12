@@ -4,10 +4,23 @@
 @inject RoadmapService Roadmap
 @inject HistoryService History
 @inject WizardState State
+@inject PromptSettingsService Configuration
 
 <PageTitle>Find My Path</PageTitle>
 
 <div class="wizard-shell">
+    @if (!Configuration.HasApiKey)
+    {
+        <div class="demo-alert warning" role="status">
+            <strong>AI connection not configured.</strong> Add the Anthropic API key before generating; the questionnaire remains available for review.
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_generationNotice))
+    {
+        <div class="demo-alert info" role="status">@_generationNotice</div>
+    }
+
     @if (_generating)
     {
         <div class="section-card loading-card">
@@ -33,7 +46,8 @@
     }
     else if (_result is not null && _result.Success)
     {
-        <RoadmapView Result="_result" Answers="Answers" CheckedSteps="State.CheckedSteps" OnRegenerate="StartGenerate" OnStartOver="StartOver" />
+        <RoadmapView Result="_result" Answers="Answers" CheckedSteps="State.CheckedSteps"
+                     OnRegenerate="StartGenerate" OnEditAnswers="EditAnswersFromResult" OnStartOver="StartOver" />
     }
     else if (_result is not null)
     {
@@ -73,7 +87,7 @@
                     </div>
                     <div class="question">
                         <label class="question-label">What is your healthcare profession?</label>
-                        <SelectInput @bind-Value="Answers.Profession" Options="OptionCatalog.Professions" Placeholder="Select your profession" />
+                        <RadioListGroup @bind-Value="Answers.Profession" Options="OptionCatalog.Professions" TwoCol="true" />
                     </div>
                     <div class="question">
                         <label class="question-label">In which country did you receive your professional qualification?</label>
@@ -85,7 +99,7 @@
                     </div>
                     <div class="question">
                         <label class="question-label">How many years of clinical experience do you have?</label>
-                        <SelectInput @bind-Value="Answers.YearsExperience" Options="OptionCatalog.YearsExperience" Placeholder="Select years of experience" />
+                        <RadioListGroup @bind-Value="Answers.YearsExperience" Options="OptionCatalog.YearsExperience" TwoCol="true" />
                     </div>
                     break;
 
@@ -98,7 +112,7 @@
                             <label class="@canadaCls">
                                 <input type="radio" name="loc" checked="@(Answers.Location == "Canada")" @onchange="SetCanada" />
                                 <svg class="option-icon" viewBox="0 0 16 16" style="fill:var(--brand)" aria-hidden="true"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6"/></svg>
-                                <span>Inside Canada</span>
+                                <span>Canada</span>
                             </label>
                             <label class="@outsideCls">
                                 <input type="radio" name="loc" checked="@(Answers.Location == "Outside Canada")" @onchange="SetOutside" />
@@ -178,7 +192,7 @@
                         </div>
                         <div class="question">
                             <label class="question-label">Score <span class="label-optional">(optional)</span></label>
-                            <input class="fmp-input" placeholder="e.g., 7.5 for IELTS" @bind="Answers.LanguageScore" @bind:event="oninput" />
+                            <input class="fmp-input" maxlength="255" placeholder="e.g., 7.5 for IELTS" @bind="Answers.LanguageScore" @bind:event="oninput" />
                         </div>
                     }
                     break;
@@ -304,6 +318,7 @@
              && NotEmpty(Answers.CompletedInternship) && NotEmpty(Answers.YearsExperience),
         2 => NotEmpty(Answers.Location)
              && (Answers.Location != "Canada" || NotEmpty(Answers.Province))
+             && (Answers.Location != "Canada" || NotEmpty(Answers.City))
              && (Answers.Location != "Outside Canada" || NotEmpty(Answers.Country))
              && NotEmpty(Answers.TargetProvince),
         3 => Answers.Location == "Canada"
@@ -341,6 +356,8 @@
 
     private bool _generating;
     private RoadmapResult? _result { get => State.Result; set => State.Result = value; }
+    private string? _generationNotice;
+    private bool _disposed;
 
     // Progress signals for the loading screen. We deliberately do NOT render the raw model
     // text (it streams as JSON, which looks alarming to a non-technical client). Instead we
@@ -383,14 +400,14 @@
     private async Task StartGenerate()
     {
         if (_generating) return; // guard against a double-click / re-entrant generate
+        var previousResult = _result is { Success: true, ParsedOk: true } ? _result : null;
         _generating = true;
-        _result = null;
-        State.CheckedSteps.Clear(); // a new roadmap starts with no ticked steps
+        _generationNotice = null;
         Interlocked.Exchange(ref _receivedBytes, 0);
         _genStartUtc = DateTime.UtcNow;
 
         _genCts?.Dispose();
-        _genCts = new CancellationTokenSource();
+        _genCts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         var ct = _genCts.Token;
 
         StartTicker();
@@ -402,29 +419,29 @@
             {
                 // Stream for the live demo effect...
                 result = await Roadmap.GenerateStreamingAsync(Answers, OnStreamDelta, ct);
-                // ...but if streaming fails for any reason, fall back to the proven non-streaming path.
-                if (!result.Success && !ct.IsCancellationRequested)
+                // ...but if streaming fails or produces unusable JSON, retry once non-streaming.
+                if ((!result.Success || !result.ParsedOk) && !ct.IsCancellationRequested)
                 {
                     result = await Roadmap.GenerateAsync(Answers, ct);
                 }
             }
             catch (OperationCanceledException)
             {
-                return; // user navigated away mid-generation: don't render or save a phantom record
+                throw; // distinguish timeout from component disposal in the outer handler
             }
             catch
             {
-                if (ct.IsCancellationRequested) return;
+                if (ct.IsCancellationRequested) throw new OperationCanceledException(ct);
                 result = await Roadmap.GenerateAsync(Answers, ct);
             }
 
             // Demo safety net: if a knowledge-base file makes the request fail (e.g. an image or
             // PDF the AI can't process), regenerate once WITHOUT the files so a roadmap still appears.
-            if (!result.Success && !ct.IsCancellationRequested && result.Attachments.Any(a => a.Sent))
+            if ((!result.Success || !result.ParsedOk) && !ct.IsCancellationRequested && result.Attachments.Any(a => a.Sent))
             {
                 var attempted = result.Attachments;
                 var retry = await Roadmap.GenerateAsync(Answers, ct, includeKnowledgeBase: false);
-                if (retry.Success)
+                if (retry.Success && retry.ParsedOk)
                 {
                     retry.Attachments = attempted.Select(a => new AttachmentInfo
                     {
@@ -440,15 +457,45 @@
                 }
             }
 
-            _result = result;
-            if (result.Success)
+            if (result.Success && result.ParsedOk)
             {
+                result.GeneratedAtUtc = DateTime.UtcNow.ToString("o");
+                _result = result;
+                State.CheckedSteps.Clear(); // only discard progress after a valid replacement exists
                 SaveHistory(result);
+            }
+            else if (previousResult is not null)
+            {
+                _result = previousResult;
+                _generationNotice = result.Success
+                    ? "The replacement response could not be formatted, so your previous pathway was kept. You can try again safely."
+                    : $"Regeneration did not complete, so your previous pathway was kept. {result.ErrorMessage}";
+            }
+            else
+            {
+                _result = result;
+                if (result.Success) SaveHistory(result); // preserve a raw fallback for diagnosis/history
+            }
+        }
+        catch (OperationCanceledException) when (!_disposed)
+        {
+            if (previousResult is not null)
+            {
+                _result = previousResult;
+                _generationNotice = "Generation reached the three-minute safety limit, so your previous pathway was kept.";
+            }
+            else
+            {
+                _result = new RoadmapResult
+                {
+                    Success = false,
+                    ErrorMessage = "Generation took longer than three minutes and was stopped. Please try again.",
+                };
             }
         }
         catch (OperationCanceledException)
         {
-            // cancelled during the fallback call — nothing to render or save
+            // Component/circuit was disposed while generation was in flight.
         }
         finally
         {
@@ -494,6 +541,7 @@
 
     public void Dispose()
     {
+        _disposed = true;
         StopTicker();
         // Abort an in-flight Claude call so navigating away doesn't burn tokens or write a
         // phantom history record for a roadmap nobody will see.
@@ -502,7 +550,15 @@
 
     private void StartOver()
     {
+        _generationNotice = null;
         State.ResetAll();
+    }
+
+    private void EditAnswersFromResult()
+    {
+        _result = null;
+        CurrentStep = ReviewStep;
+        _generationNotice = "Edit any section, then generate a replacement pathway. Your existing snapshot remains available in History.";
     }
 
     private void BackToReviewFromResult()
@@ -518,9 +574,13 @@
             var now = DateTime.UtcNow;
             var record = new SubmissionRecord
             {
-                Id = now.ToString("yyyyMMdd-HHmmss-fff"),
+                Id = $"{now:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}"[..32],
                 TimestampUtc = now.ToString("o"),
                 Model = result.Model,
+                Effort = result.Effort,
+                MaxOutputTokens = result.MaxOutputTokens,
+                IncludeKnowledgeBase = result.IncludeKnowledgeBase,
+                QuestionnaireVersion = result.QuestionnaireVersion,
                 Input = Answers,
                 InputText = result.UserMessage,
                 SystemInstruction = result.SystemInstruction,
@@ -533,7 +593,10 @@
                 Profession = Answers.Profession,
                 RecommendedPathway = result.Roadmap?.RecommendedPathway,
             };
-            History.Save(record);
+            if (!History.Save(record))
+            {
+                _generationNotice = "Your pathway was generated, but its History snapshot could not be saved. The on-screen result is safe to use.";
+            }
         }
         catch
         {
@@ -594,7 +657,7 @@
         Answers.Profession = "Nurse";
         Answers.QualificationCountry = "Philippines";
         Answers.CompletedInternship = "Yes";
-        Answers.YearsExperience = "4-7 years";
+        Answers.YearsExperience = "4–7 years";
         Answers.Location = "Canada";
         Answers.Province = "Ontario";
         Answers.City = "Toronto";
@@ -618,7 +681,7 @@
         Answers.Profession = "Pharmacist";
         Answers.QualificationCountry = "India";
         Answers.CompletedInternship = "No";
-        Answers.YearsExperience = "1-3 years";
+        Answers.YearsExperience = "1–3 years";
         Answers.Location = "Outside Canada";
         Answers.Country = "India";
         Answers.TargetProvince = "Not sure yet";
@@ -645,47 +708,47 @@
         var groups = new List<SummaryGroup>();
 
         var s1 = new List<SummaryItem>();
-        Add(s1, "Healthcare profession", Answers.Profession);
-        Add(s1, "Country of qualification", Answers.QualificationCountry);
-        Add(s1, "Completed internship/residency", Answers.CompletedInternship);
-        Add(s1, "Years of clinical experience", Answers.YearsExperience);
+        Add(s1, "What is your healthcare profession?", Answers.Profession);
+        Add(s1, "In which country did you receive your professional qualification?", Answers.QualificationCountry);
+        Add(s1, "Have you completed your internship or residency (if applicable)?", Answers.CompletedInternship);
+        Add(s1, "How many years of clinical experience do you have?", Answers.YearsExperience);
         groups.Add(new SummaryGroup("Professional Background", 1, s1));
 
         var s2 = new List<SummaryItem>();
-        Add(s2, "Currently living", Answers.Location);
-        Add(s2, "Province", Answers.Province);
-        Add(s2, "City", Answers.City);
-        Add(s2, "Country", Answers.Country);
-        Add(s2, "Target province", Answers.TargetProvince);
+        Add(s2, "Where are you currently living?", Answers.Location);
+        Add(s2, "If Canada: Province", Answers.Province);
+        Add(s2, "If Canada: City", Answers.City);
+        Add(s2, "If Outside Canada: Country", Answers.Country);
+        Add(s2, "Which province do you plan to practise in? (POC enhancement)", Answers.TargetProvince);
         groups.Add(new SummaryGroup("Current Location", 2, s2));
 
         var s3 = new List<SummaryItem>();
-        Add(s3, "Immigration status", Answers.ImmigrationStatus);
-        Add(s3, "Planning to immigrate to Canada", Answers.PlanningToImmigrate);
+        Add(s3, "What is your current immigration status?", Answers.ImmigrationStatus);
+        Add(s3, "Are you planning to immigrate to Canada?", Answers.PlanningToImmigrate);
         groups.Add(new SummaryGroup("Immigration Status", 3, s3));
 
         var s4 = new List<SummaryItem>();
-        Add(s4, "Started licensing process", Answers.LicensingStarted);
-        Add(s4, "Exams completed", Answers.ExamsCompleted.Count > 0 ? string.Join(", ", Answers.ExamsCompleted) : null);
-        Add(s4, "Registered with a Canadian regulatory body", Answers.RegisteredWithBody);
+        Add(s4, "Have you started your licensing process?", Answers.LicensingStarted);
+        Add(s4, "Which licensing exams have you completed?", Answers.ExamsCompleted.Count > 0 ? string.Join(", ", Answers.ExamsCompleted) : null);
+        Add(s4, "Are you currently registered with any Canadian regulatory body?", Answers.RegisteredWithBody);
         groups.Add(new SummaryGroup("Licensing Status", 4, s4));
 
         var s5 = new List<SummaryItem>();
-        Add(s5, "Completed an English language test", Answers.CompletedLanguageTest);
-        Add(s5, "Test", Answers.LanguageTest);
-        Add(s5, "Score", Answers.LanguageScore);
+        Add(s5, "Have you completed an English language test?", Answers.CompletedLanguageTest);
+        Add(s5, "Which test? (if Yes)", Answers.LanguageTest);
+        Add(s5, "Score (if Yes)", Answers.LanguageScore);
         groups.Add(new SummaryGroup("Language Proficiency", 5, s5));
 
         var s6 = new List<SummaryItem>();
-        Add(s6, "Primary goals", Answers.Goals.Count > 0 ? string.Join(", ", Answers.Goals) : null);
+        Add(s6, "What is your primary goal?", Answers.Goals.Count > 0 ? string.Join(", ", Answers.Goals) : null);
         groups.Add(new SummaryGroup("Career Goals", 6, s6));
 
         var s7 = new List<SummaryItem>();
-        Add(s7, "Support areas", Answers.LearningNeeds.Count > 0 ? string.Join(", ", Answers.LearningNeeds) : null);
+        Add(s7, "Which areas would you like support with?", Answers.LearningNeeds.Count > 0 ? string.Join(", ", Answers.LearningNeeds) : null);
         groups.Add(new SummaryGroup("Learning Needs", 7, s7));
 
         var s8 = new List<SummaryItem>();
-        Add(s8, "Additional information", Answers.AdditionalInfo);
+        Add(s8, "Is there anything else you would like HealthNet to know to better personalise your learning experience?", Answers.AdditionalInfo);
         groups.Add(new SummaryGroup("Additional Information", 8, s8));
 
         return groups.Where(g => g.Items.Count > 0).ToList();

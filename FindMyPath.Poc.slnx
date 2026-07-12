@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="FindMyPath.Poc/FindMyPath.Poc.csproj" />
+  <Project Path="FindMyPath.Poc.Tests/FindMyPath.Poc.Tests.csproj" />
+</Solution>

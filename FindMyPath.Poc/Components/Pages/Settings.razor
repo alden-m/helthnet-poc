@@ -6,19 +6,62 @@
 <PageTitle>Settings</PageTitle>
 
 <div class="wizard-shell">
-    <h1 class="page-title">Prompt Settings</h1>
-    <p class="page-subtitle">Tune how the AI drafts each roadmap. Changes are saved to a JSON file under your app-data folder and survive restarts.</p>
+    <h1 class="page-title">Generation Settings</h1>
+    <p class="page-subtitle">Tune the source material, reasoning effort, response length, model, and instruction used for each roadmap. Saved settings survive restarts.</p>
+
+    <div class="connection-status @(SettingsService.HasApiKey ? "ready" : "missing")" role="status">
+        <span class="connection-dot"></span>
+        @(SettingsService.HasApiKey ? "Anthropic API key configured" : "Anthropic API key not configured - generation is unavailable")
+    </div>
 
     <div class="section-card">
-        <div class="question">
-            <label class="question-label">Model</label>
-            <select class="fmp-select" @bind="_model">
-                @foreach (var m in ModelCatalog.Models)
-                {
-                    <option value="@m.Id">@m.DisplayName</option>
-                }
-            </select>
-            <div class="hint">Used to generate each roadmap. Pricing feeds the per-run cost estimate shown in History.</div>
+        <h2 class="settings-section-title">Generation controls</h2>
+
+        <label class="setting-switch">
+            <input type="checkbox" @bind="_includeKnowledgeBase" />
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-copy">
+                <strong>Use uploaded HealthNet reference files</strong>
+                <span>Off sends only the questionnaire and system instruction; the model still uses its trained knowledge.</span>
+            </span>
+            <span class="mode-pill @(_includeKnowledgeBase ? "on" : "off")">@(_includeKnowledgeBase ? $"On - {_files.Count} file{(_files.Count == 1 ? "" : "s")}" : "Off - prompt only")</span>
+        </label>
+
+        <div class="settings-grid">
+            <div class="question">
+                <label class="question-label">Model</label>
+                <select class="fmp-select" @bind="_model">
+                    @foreach (var m in ModelCatalog.Models)
+                    {
+                        <option value="@m.Id">@m.DisplayName</option>
+                    }
+                </select>
+                <div class="hint">Pricing feeds the per-run cost estimate saved in History.</div>
+            </div>
+
+            <div class="question">
+                <label class="question-label">Reasoning effort</label>
+                <select class="fmp-select" @bind="_effort" disabled="@(!SelectedModel.SupportsEffort)">
+                    @foreach (var option in GenerationTuningCatalog.Efforts)
+                    {
+                        <option value="@option.Value">@option.DisplayName</option>
+                    }
+                </select>
+                <div class="hint">@(SelectedModel.SupportsEffort
+                    ? GenerationTuningCatalog.Efforts.First(e => e.Value == _effort).Description
+                    : "This model does not support effort tuning; the API default is used.")</div>
+            </div>
+
+            <div class="question">
+                <label class="question-label">Maximum output tokens</label>
+                <select class="fmp-select" @bind="_maxOutputTokens">
+                    @foreach (var option in GenerationTuningCatalog.TokenBudgets)
+                    {
+                        <option value="@option.Value">@option.DisplayName</option>
+                    }
+                </select>
+                <div class="hint">@GenerationTuningCatalog.TokenBudgets.First(t => t.Value == _maxOutputTokens).Description</div>
+            </div>
         </div>
 
         <div class="question">
@@ -40,8 +83,8 @@
 
     <div class="section-card">
         <div class="question" style="margin-bottom:.5rem">
-            <label class="question-label">Knowledge base <span class="label-optional">(sent to the AI with every roadmap)</span></label>
-            <div class="hint" style="margin-bottom:.75rem">Upload documents HealthNet wants the AI to treat as authoritative reference material.</div>
+            <label class="question-label">Knowledge base <span class="label-optional">(attached only when the switch above is on)</span></label>
+            <div class="hint" style="margin-bottom:.75rem">Upload documents HealthNet wants available as authoritative factual reference material.</div>
 
             <div class="kb-warning">
                 <strong>Tip:</strong> plain-text files (<code>.txt</code>, <code>.md</code>) work best — they're read most reliably and cost the fewest tokens. <strong>Word</strong> (<code>.docx</code>) and <strong>PDF</strong> files are supported next; <strong>images</strong> and other file types are accepted but cost more and may not be read. Any file type is welcome. Limit: @MaxMb MB per file (the whole request is capped at 32 MB by the AI service).
@@ -49,7 +92,7 @@
 
             @if (_files.Count == 0)
             {
-                <div class="kb-empty">No files yet. Upload one below and it will be sent with every roadmap.</div>
+                <div class="kb-empty">No files yet. Upload one below, then turn on reference files when you want it included.</div>
             }
             else
             {
@@ -88,6 +131,9 @@
 @code {
     private string _model = ModelCatalog.DefaultModel;
     private string _systemInstruction = "";
+    private bool _includeKnowledgeBase;
+    private string _effort = GenerationTuningCatalog.DefaultEffort;
+    private int _maxOutputTokens = GenerationTuningCatalog.DefaultMaxOutputTokens;
     private string? _status;
 
     private List<KbFile> _files = new();
@@ -95,19 +141,25 @@
     private bool _uploading;
 
     private static int MaxMb => (int)(KnowledgeBaseService.MaxFileBytes / (1024 * 1024));
+    private ModelInfo SelectedModel => ModelCatalog.Find(_model);
 
     protected override void OnInitialized()
     {
         var s = SettingsService.Current;
         _model = s.Model;
         _systemInstruction = s.SystemInstruction;
+        _includeKnowledgeBase = s.IncludeKnowledgeBase;
+        _effort = s.Effort;
+        _maxOutputTokens = s.MaxOutputTokens;
         _files = KnowledgeBase.List();
     }
 
     private void SaveSettings()
     {
-        SettingsService.Save(_systemInstruction, _model);
-        _status = "Saved.";
+        var saved = SettingsService.Save(_systemInstruction, _model, _includeKnowledgeBase, _effort, _maxOutputTokens);
+        _status = saved
+            ? "Saved. These controls will be used for the next generation."
+            : "Applied for this session, but the settings file could not be saved.";
     }
 
     private void ResetPrompt()

@@ -19,10 +19,16 @@ Three tabs in the sidebar:
   first screen fill every answer and jump straight to review — one click to the AI during a demo. Generation
   streams the model's output live, then renders a phase-by-phase roadmap with timelines, costs, checkable
   steps, and a "What was sent to the AI" panel.
-- **Settings** — tune the AI without touching code: the system instruction, an optional reference-material
-  block (with `.txt`/`.md` upload), and the model. Saved to `settings.json`, survives restarts.
+- **Settings** — tune the AI without touching code: model, reasoning effort, maximum output tokens, system
+  instruction, and an explicit switch for uploaded HealthNet reference files. Text, Word, PDF, and image
+  uploads are supported. Settings survive restarts.
 - **History** — every generation is saved as a JSON snapshot (the answers, the categorized output phases, the
-  API cost, and the exact prompt used). Click any submission to see the full snapshot.
+  API cost, exact prompt, questionnaire version, and effective tuning controls). Click any submission to see
+  the full snapshot or print a clean roadmap-only PDF.
+
+The API request uses Anthropic structured outputs, so every current model is constrained to the roadmap JSON
+schema instead of relying on best-effort fenced JSON. A tolerant parser remains for old history and defensive
+fallback rendering.
 
 ## Prerequisites
 
@@ -45,7 +51,7 @@ The key comes from **configuration**, read as `Anthropic:ApiKey`.
   }
   ```
 
-  The committed `appsettings.json` ships with an **empty** `ApiKey`. The local copy is flagged
+  The committed `appsettings.json` ships with an **empty** `ApiKey`. This checkout's local copy can be flagged
   `git update-index --skip-worktree`, so your real key is never staged or pushed. (You can also set the
   `ANTHROPIC_API_KEY` environment variable instead — it's used as a fallback.)
 
@@ -54,17 +60,18 @@ The key comes from **configuration**, read as `Anthropic:ApiKey`.
   separator). The same code reads it.
 
 The key is never written to `app_data` and never appears in history snapshots.
+`appsettings.json` is also explicitly excluded from publish output; deployed hosts must provide the key through
+environment/application settings.
 
 ## Deploying (Azure App Service or any host)
 
 The app is Blazor **Interactive Server**, so all interactivity — including the live token-by-token
 streaming while a roadmap is generated — runs over a SignalR circuit that needs **WebSockets**.
 
-- **Azure App Service ships with WebSockets OFF by default.** Before the demo, turn it on:
-  **Configuration → General settings → Web sockets → On** (or set `webSocketsEnabled: true` in
-  ARM/Bicep). Without it the circuit falls back to long-polling behind the App Service proxy, which
-  can stutter or drop ("Attempting to reconnect…") mid-generation. If streaming ever misbehaves it
-  still auto-falls-back to a non-streaming call, but enable WebSockets for the smooth demo.
+- Before the demo, verify **Configuration → General settings → Web sockets** is **On** (or set
+  `webSocketsEnabled: true` in ARM/Bicep). This lets the Blazor Server circuit use WebSockets instead
+  of a fallback transport for the smoothest live-streaming demo. Generation still auto-falls back
+  to a non-streaming API call if the model stream itself fails.
 - Set the API key as an application setting named `Anthropic__ApiKey` (double underscore) — never in
   the repo.
 - Currency/number/date formatting is pinned to a fixed culture in `Program.cs`, so cost figures show
@@ -74,11 +81,13 @@ streaming while a roadmap is generated — runs over a SignalR circuit that need
 
 Runtime data is stored as JSON in a **project-relative** `FindMyPath.Poc/app_data/` folder (gitignored):
 
-- `app_data/settings.json` — the Settings-tab tuning (system instruction, model, reference material).
-- `app_data/history/*.json` — one snapshot per generation (answers + phases + cost + prompt + model).
+- `app_data/settings.json` — model, prompt, reference-file mode, effort, and output-token cap.
+- `app_data/knowledge-base/*` — files available to attach when reference-file mode is enabled.
+- `app_data/history/*.json` — one atomic snapshot per generation (answers + phases + cost + prompt + controls).
 
-This folder lives under the app's content root, so it travels and persists with the app on Azure App
-Service — unlike the OS roaming app-data folder, which is ephemeral there.
+The entire `app_data` tree is gitignored and excluded from build/publish artifacts because it can contain
+questionnaire data or private uploads. For a hosted POC, mount persistent storage if history must survive a
+redeploy.
 
 ## Run it
 
@@ -89,7 +98,18 @@ dotnet run
 
 Then open the URL printed in the console. To pin a port: `dotnet run --urls http://localhost:5080`.
 
-Tune the prompt and pick the model on the **Settings** tab.
+On Windows, `pwsh ./utils/run.ps1` performs a scoped clean relaunch, verifies a healthy page response, and opens
+the app. Tune generation on the **Settings** tab.
+
+## Tests
+
+```bash
+dotnet test FindMyPath.Poc.slnx
+```
+
+The focused suite covers the exact questionnaire catalogs and AI payload wording, conditional clearing,
+settings migration/persistence, roadmap parsing and null hardening, knowledge-base file safety, model pricing,
+and atomic/corrupt history behavior. UI and live-model behavior are verified separately with browser dry runs.
 
 ## Notes on the spec vs. the client mockups
 
@@ -103,12 +123,12 @@ were:
 - The **full 8-section questionnaire** from the spec is kept (richer input → better AI output), plus a
   "Target Province" question folded in from the mockups. The mockups showed a leaner 6-step flow; the spec's
   richer set was used.
-- A few field types differ between spec and mockups (e.g. profession as radio vs. dropdown, qualification
-  country as dropdown vs. free text, experience buckets). The spec's option lists were kept; dropdowns were
-  used where the mockups showed them.
+- Question wording, order, required behavior, option lists, and single/multi-select controls follow the written
+  questionnaire. Review and AI-payload labels use the same wording, not abbreviated aliases.
 - The mockups' contextual "why this matters" hint boxes were intentionally omitted.
 
 ## Throwaway by design
 
-No tests, no CI, no auth, no database, no persistence of user answers beyond the local history snapshots.
-This code is meant to be discarded once the client decides whether to build the real product.
+There is no auth, database, advisor workflow, back office, or production persistence. The small automated suite
+exists only to make the client demo repeatable and protect the questionnaire/generation seams. This code is
+still meant to be discarded once the client decides whether to build the real product.

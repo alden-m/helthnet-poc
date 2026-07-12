@@ -486,6 +486,8 @@ $RECYCLE.BIN/
 /*.png
 
 
-# Runtime data (settings tuning + history snapshots)
-FindMyPath.Poc/app_data/
+# Runtime data (settings tuning + history snapshots) and local verification artifacts
+**/app_data/
+/tmp/
+/output/
 

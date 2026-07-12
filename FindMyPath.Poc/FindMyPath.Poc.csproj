@@ -5,10 +5,17 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <!-- Runtime history/settings/uploads can contain sensitive questionnaire data. Never package them. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);app_data\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Anthropic" Version="12.35.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Local appsettings can contain a developer API key; deployed hosts must use environment settings. -->
+    <Content Update="appsettings.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
 </Project>

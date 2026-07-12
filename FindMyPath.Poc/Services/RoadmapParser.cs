@@ -24,14 +24,8 @@ public static class RoadmapParser
         if (json is null) return null;
         try
         {
-            var dto = JsonSerializer.Deserialize<RoadmapDto>(json, Opts);
+            var dto = Normalize(JsonSerializer.Deserialize<RoadmapDto>(json, Opts));
             if (dto is null) return null;
-
-            // The model can legitimately emit explicit `null` for a collection (e.g. "phases": null);
-            // System.Text.Json would leave those null and the render would throw. Normalize defensively.
-            dto.Phases ??= new();
-            dto.Notes ??= new();
-            foreach (var p in dto.Phases) p.Steps ??= new();
 
             if (!string.IsNullOrWhiteSpace(dto.Summary) || dto.Phases.Count > 0 || !string.IsNullOrWhiteSpace(dto.RecommendedPathway))
             {
@@ -43,6 +37,35 @@ public static class RoadmapParser
             // fall through - render raw text instead
         }
         return null;
+    }
+
+    /// <summary>Normalizes model output and legacy history so rendering cannot trip over explicit JSON nulls.</summary>
+    public static RoadmapDto? Normalize(RoadmapDto? dto)
+    {
+        if (dto is null) return null;
+
+        dto.Summary ??= "";
+        dto.RecommendedPathway ??= "";
+        dto.EstimatedTotalTimeline ??= "";
+        dto.EstimatedTotalCost ??= "";
+        dto.Notes = (dto.Notes ?? new()).OfType<string>().Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
+        dto.Phases = (dto.Phases ?? new()).OfType<PhaseDto>().ToList();
+
+        foreach (var phase in dto.Phases)
+        {
+            phase.Title ??= "";
+            phase.Description ??= "";
+            phase.Steps = (phase.Steps ?? new()).OfType<StepDto>().ToList();
+            foreach (var step in phase.Steps)
+            {
+                step.Title ??= "";
+                step.Description ??= "";
+                step.EstimatedTimeline ??= "";
+                step.EstimatedCost ??= "";
+            }
+        }
+
+        return dto;
     }
 
     private static string? ExtractJson(string text)

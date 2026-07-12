@@ -4,10 +4,9 @@
     @foreach (var opt in Options)
     {
         var isSel = Selected.Contains(opt);
-        var isDisabled = IsDisabled(opt);
-        var itemCls = "choice" + (isSel ? " selected" : "") + (isDisabled ? " disabled" : "");
+        var itemCls = "choice" + (isSel ? " selected" : "");
         <label class="@itemCls">
-            <input type="checkbox" checked="@isSel" disabled="@isDisabled" @onchange="@(() => Toggle(opt))" />
+            <input type="checkbox" checked="@isSel" @onchange="@(() => Toggle(opt))" />
             <span>@opt</span>
         </label>
     }
@@ -19,13 +18,10 @@
     [Parameter] public IEnumerable<string> Options { get; set; } = Array.Empty<string>();
     [Parameter] public bool TwoCol { get; set; }
 
-    /// <summary>Optional mutually-exclusive option (e.g. "None"): selecting it clears the rest and disables them.</summary>
+    /// <summary>Optional mutually-exclusive option (e.g. "None"): selecting either side clears the other.</summary>
     [Parameter] public string? ExclusiveOption { get; set; }
 
     private string ListCls => TwoCol ? "choice-list two-col" : "choice-list";
-
-    private bool IsDisabled(string opt)
-        => ExclusiveOption is not null && opt != ExclusiveOption && Selected.Contains(ExclusiveOption);
 
     private async Task Toggle(string opt)
     {

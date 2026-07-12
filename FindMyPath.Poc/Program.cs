@@ -35,7 +35,19 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
+
+// The demo runner intentionally supports an HTTP-only profile. Registering the redirect
+// middleware without an HTTPS listener produces a warning on every fresh local launch and
+// can never redirect successfully. When the -Https profile binds an HTTPS URL, keep the
+// normal redirect behaviour. Production reverse proxies can own HTTPS redirection upstream.
+var hasHttpsEndpoint = (app.Configuration["urls"] ?? string.Empty)
+    .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .Any(url => Uri.TryCreate(url, UriKind.Absolute, out var uri)
+        && uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase));
+if (hasHttpsEndpoint)
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAntiforgery();
 

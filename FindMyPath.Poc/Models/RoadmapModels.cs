@@ -1,29 +1,31 @@
+using System.Text.Json.Serialization;
+
 namespace FindMyPath.Poc.Models;
 
-/// <summary>The AI's roadmap, matching the JSON contract in the system instruction.</summary>
+/// <summary>The AI's roadmap, enforced by the Anthropic structured-output schema.</summary>
 public class RoadmapDto
 {
-    public string? Summary { get; set; }
-    public string? RecommendedPathway { get; set; }
-    public string? EstimatedTotalTimeline { get; set; }
-    public string? EstimatedTotalCost { get; set; }
-    public List<PhaseDto> Phases { get; set; } = new();
-    public List<string> Notes { get; set; } = new();
+    [JsonPropertyName("summary")] public string Summary { get; set; } = "";
+    [JsonPropertyName("recommendedPathway")] public string RecommendedPathway { get; set; } = "";
+    [JsonPropertyName("estimatedTotalTimeline")] public string EstimatedTotalTimeline { get; set; } = "";
+    [JsonPropertyName("estimatedTotalCost")] public string EstimatedTotalCost { get; set; } = "";
+    [JsonPropertyName("phases")] public List<PhaseDto> Phases { get; set; } = new();
+    [JsonPropertyName("notes")] public List<string> Notes { get; set; } = new();
 }
 
 public class PhaseDto
 {
-    public string? Title { get; set; }
-    public string? Description { get; set; }
-    public List<StepDto> Steps { get; set; } = new();
+    [JsonPropertyName("title")] public string Title { get; set; } = "";
+    [JsonPropertyName("description")] public string Description { get; set; } = "";
+    [JsonPropertyName("steps")] public List<StepDto> Steps { get; set; } = new();
 }
 
 public class StepDto
 {
-    public string? Title { get; set; }
-    public string? Description { get; set; }
-    public string? EstimatedTimeline { get; set; }
-    public string? EstimatedCost { get; set; }
+    [JsonPropertyName("title")] public string Title { get; set; } = "";
+    [JsonPropertyName("description")] public string Description { get; set; } = "";
+    [JsonPropertyName("estimatedTimeline")] public string EstimatedTimeline { get; set; } = "";
+    [JsonPropertyName("estimatedCost")] public string EstimatedCost { get; set; } = "";
 }
 
 public class TokenUsage
@@ -45,6 +47,11 @@ public class RoadmapResult
     public TokenUsage Usage { get; set; } = new();
     public decimal CostUsd { get; set; }
     public string Model { get; set; } = "";
+    public string Effort { get; set; } = GenerationTuningCatalog.DefaultEffort;
+    public int MaxOutputTokens { get; set; } = GenerationTuningCatalog.DefaultMaxOutputTokens;
+    public bool IncludeKnowledgeBase { get; set; }
+    public string QuestionnaireVersion { get; set; } = AssessmentAnswers.QuestionnaireVersion;
+    public string GeneratedAtUtc { get; set; } = "";
     public bool ParsedOk => Roadmap is not null;
 
     // Exactly what was sent to the AI (for the "what was sent" panel and history snapshot).

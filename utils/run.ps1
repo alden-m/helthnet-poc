@@ -123,9 +123,11 @@ function Wait-UrlReady {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     while ((Get-Date) -lt $deadline) {
         try {
-            # Any HTTP response (even 4xx) means Kestrel is up and serving.
-            Invoke-WebRequest -Uri $Url -Method Head -TimeoutSec 5 -SkipCertificateCheck -SkipHttpErrorCheck | Out-Null
-            return $true
+            $response = Invoke-WebRequest -Uri $Url -Method Get -TimeoutSec 5 -SkipCertificateCheck -SkipHttpErrorCheck
+            if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 300 -and
+                $response.Content -match '<title>Find My Path</title>') {
+                return $true
+            }
         }
         catch {
             Start-Sleep -Milliseconds 500
@@ -196,7 +198,7 @@ if (-not $exe) {
 }
 
 $env:ASPNETCORE_URLS = $url   # inherited by the child started below
-Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe -Parent) | Out-Null
+Start-Process -FilePath $exe -WorkingDirectory $Project -WindowStyle Hidden | Out-Null
 Write-Host "    started $($App.Name) -> $url" -ForegroundColor Green
 Remove-Item Env:\ASPNETCORE_URLS -ErrorAction SilentlyContinue
 

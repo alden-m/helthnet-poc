@@ -6,6 +6,8 @@ namespace FindMyPath.Poc.Models;
 /// </summary>
 public class AssessmentAnswers
 {
+    public const string QuestionnaireVersion = "1.0";
+
     // Section 1 - Professional Background
     public string? Profession { get; set; }
     public string? QualificationCountry { get; set; }

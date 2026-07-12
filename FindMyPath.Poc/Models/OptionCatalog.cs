@@ -11,7 +11,7 @@ public static class OptionCatalog
 
     public static readonly string[] YearsExperience =
     {
-        "Less than 1 year", "1-3 years", "4-7 years", "8+ years"
+        "Less than 1 year", "1–3 years", "4–7 years", "8+ years"
     };
 
     public static readonly string[] Provinces =
@@ -28,7 +28,7 @@ public static class OptionCatalog
 
     public static readonly string[] ImmigrationStatuses =
     {
-        "Citizen", "Permanent Resident", "Work Permit", "Study Permit",
+        "Citizen", "PR", "Work Permit", "Study Permit",
         "Visitor", "Refugee", "Other"
     };
 

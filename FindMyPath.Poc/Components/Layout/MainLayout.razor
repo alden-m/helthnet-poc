@@ -1,5 +1,7 @@
 ﻿@inherits LayoutComponentBase
 
+@inject NavigationManager Navigation
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
@@ -11,10 +13,33 @@
         </div>
 
         <article class="content px-4">
-            @Body
+            <ErrorBoundary @ref="_errorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent Context="exception">
+                    <div class="circuit-error" role="alert">
+                        <h1>That view could not be displayed</h1>
+                        <p>Your saved settings and History have not been changed. Return to the assessment and try the action again.</p>
+                        <button class="btn-next" @onclick="ReturnToAssessment">Return to Find My Path</button>
+                    </div>
+                </ErrorContent>
+            </ErrorBoundary>
         </article>
     </main>
 </div>
+
+@code {
+    private ErrorBoundary? _errorBoundary;
+
+    protected override void OnParametersSet() => _errorBoundary?.Recover();
+
+    private void ReturnToAssessment()
+    {
+        _errorBoundary?.Recover();
+        Navigation.NavigateTo("/");
+    }
+}
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

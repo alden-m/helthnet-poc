@@ -10,6 +10,10 @@ public class SubmissionRecord
     public string Id { get; set; } = "";
     public string TimestampUtc { get; set; } = "";
     public string Model { get; set; } = "";
+    public string Effort { get; set; } = GenerationTuningCatalog.DefaultEffort;
+    public int MaxOutputTokens { get; set; } = GenerationTuningCatalog.DefaultMaxOutputTokens;
+    public bool IncludeKnowledgeBase { get; set; }
+    public string QuestionnaireVersion { get; set; } = AssessmentAnswers.QuestionnaireVersion;
 
     // Input
     public AssessmentAnswers Input { get; set; } = new();

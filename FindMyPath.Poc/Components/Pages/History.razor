@@ -7,56 +7,68 @@
 <div class="wizard-shell">
     @if (_selected is null)
     {
-        <h1 class="page-title">History</h1>
-        <p class="page-subtitle">Every generated pathway is saved as a snapshot — the answers entered, the categorized output, the API cost, and the exact prompt used.</p>
+        <div class="no-print">
+            <h1 class="page-title">History</h1>
+            <p class="page-subtitle">Every generated pathway is saved as a snapshot — the answers entered, the categorized output, the API cost, and the exact prompt used.</p>
 
-        @if (_records.Count == 0)
-        {
-            <div class="section-card">
-                <p class="hint" style="margin:0">No submissions yet. Generate a pathway from the Find My Path tab and it will appear here.</p>
-            </div>
-        }
-        else
-        {
-            <div class="history-list">
-                @foreach (var r in _records)
-                {
-                    var title = string.IsNullOrWhiteSpace(r.Profession) ? "Submission" : r.Profession;
-                    var pathway = string.IsNullOrWhiteSpace(r.RecommendedPathway) ? "(response not parsed)" : r.RecommendedPathway;
-                    <button class="history-item" @onclick="@(() => Select(r.Id))">
-                        <div class="history-item-main">
-                            <div class="history-item-title">@title</div>
-                            <div class="history-item-pathway">@pathway</div>
-                            <div class="history-item-sub">@FormatTime(r.TimestampUtc) · @ModelCatalog.DisplayName(r.Model)</div>
-                        </div>
-                        <div class="history-item-cost">@r.CostUsd.ToString("C4")</div>
-                    </button>
-                }
-            </div>
-        }
+            @if (_records.Count == 0)
+            {
+                <div class="section-card">
+                    <p class="hint" style="margin:0">No submissions yet. Generate a pathway from the Find My Path tab and it will appear here.</p>
+                </div>
+            }
+            else
+            {
+                <div class="history-list">
+                    @foreach (var r in _records)
+                    {
+                        var title = string.IsNullOrWhiteSpace(r.Profession) ? "Submission" : r.Profession;
+                        var pathway = string.IsNullOrWhiteSpace(r.RecommendedPathway) ? "(response not parsed)" : r.RecommendedPathway;
+                        <button class="history-item" @onclick="@(() => Select(r.Id))">
+                            <div class="history-item-main">
+                                <div class="history-item-title">@title</div>
+                                <div class="history-item-pathway">@pathway</div>
+                                <div class="history-item-sub">@FormatTime(r.TimestampUtc) · @ModelCatalog.DisplayName(r.Model ?? "")</div>
+                            </div>
+                            <div class="history-item-cost">@r.CostUsd.ToString("C4")</div>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
     }
     else
     {
-        <button class="btn-prev" style="margin-bottom:1rem" @onclick="BackToList">&lsaquo; Back to history</button>
+        var selected = _selected!;
+        var usage = selected.Usage ?? new TokenUsage();
+        var answers = selected.Input ?? new AssessmentAnswers();
 
-        <div class="section-card" style="margin-bottom:1.5rem">
-            <h1 class="section-title" style="margin-bottom:.75rem">@(string.IsNullOrWhiteSpace(_selected.Profession) ? "Submission" : _selected.Profession) — submission snapshot</h1>
-            <div class="snapshot-meta">
-                <span><strong>When:</strong> @FormatTime(_selected.TimestampUtc)</span>
-                <span><strong>Model:</strong> @ModelCatalog.DisplayName(_selected.Model)</span>
-                <span><strong>API cost:</strong> @_selected.CostUsd.ToString("C4")</span>
-                <span><strong>Tokens:</strong> @_selected.Usage.InputTokens.ToString("N0") in / @_selected.Usage.OutputTokens.ToString("N0") out</span>
-            </div>
+        <div class="no-print">
+            <button class="btn-prev" style="margin-bottom:1rem" @onclick="BackToList">&lsaquo; Back to history</button>
 
-            <details class="what-sent" style="margin-top:1.25rem">
-                <summary>Input that was entered</summary>
-                <div class="what-sent-body">
-                    <pre>@_selected.InputText</pre>
+            <div class="section-card" style="margin-bottom:1.5rem">
+                <h1 class="section-title" style="margin-bottom:.75rem">@(string.IsNullOrWhiteSpace(selected.Profession) ? "Submission" : selected.Profession) — submission snapshot</h1>
+                <div class="snapshot-meta">
+                    <span><strong>When:</strong> @FormatTime(selected.TimestampUtc)</span>
+                    <span><strong>Model:</strong> @ModelCatalog.DisplayName(selected.Model ?? "")</span>
+                    <span><strong>Effort:</strong> @(ModelCatalog.Find(selected.Model).SupportsEffort ? selected.Effort : "model default")</span>
+                    <span><strong>Output cap:</strong> @selected.MaxOutputTokens.ToString("N0") tokens</span>
+                    <span><strong>Reference files:</strong> @(selected.IncludeKnowledgeBase ? "enabled" : "disabled")</span>
+                    <span><strong>Questionnaire:</strong> v@(selected.QuestionnaireVersion)</span>
+                    <span><strong>API cost:</strong> @selected.CostUsd.ToString("C4")</span>
+                    <span><strong>Tokens:</strong> @usage.InputTokens.ToString("N0") in / @usage.OutputTokens.ToString("N0") out</span>
                 </div>
-            </details>
+
+                <details class="what-sent" style="margin-top:1.25rem">
+                    <summary>Input that was entered</summary>
+                    <div class="what-sent-body">
+                        <pre>@(selected.InputText ?? "")</pre>
+                    </div>
+                </details>
+            </div>
         </div>
 
-        <RoadmapView Result="ToResult(_selected)" Answers="_selected.Input" ReadOnly="true" />
+        <RoadmapView Result="ToResult(selected)" Answers="answers" ReadOnly="true" />
     }
 </div>
 
@@ -74,23 +86,28 @@
         _records = Store.List();
     }
 
-    private static string FormatTime(string iso)
+    private static string FormatTime(string? iso)
     {
         return DateTime.TryParse(iso, null, System.Globalization.DateTimeStyles.RoundtripKind, out var dt)
             ? dt.ToLocalTime().ToString("MMM d, yyyy · h:mm tt")
-            : iso;
+            : string.IsNullOrWhiteSpace(iso) ? "Unknown date" : iso;
     }
 
     private static RoadmapResult ToResult(SubmissionRecord r) => new()
     {
         Success = true,
         Roadmap = r.Output,
-        RawText = r.RawOutput,
-        Usage = r.Usage,
+        RawText = r.RawOutput ?? "",
+        Usage = r.Usage ?? new(),
         CostUsd = r.CostUsd,
-        Model = r.Model,
-        SystemInstruction = r.SystemInstruction,
-        UserMessage = r.InputText,
-        Attachments = r.Attachments ?? new(),
+        Model = r.Model ?? "",
+        Effort = r.Effort,
+        MaxOutputTokens = r.MaxOutputTokens,
+        IncludeKnowledgeBase = r.IncludeKnowledgeBase,
+        QuestionnaireVersion = r.QuestionnaireVersion,
+        GeneratedAtUtc = r.TimestampUtc,
+        SystemInstruction = r.SystemInstruction ?? "",
+        UserMessage = r.InputText ?? "",
+        Attachments = r.Attachments?.OfType<AttachmentInfo>().ToList() ?? new(),
     };
 }

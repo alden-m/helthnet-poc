@@ -22,49 +22,61 @@ public static class AssessmentFormatter
         }
 
         sb.AppendLine("## Professional Background");
-        Q("Healthcare profession", a.Profession);
-        Q("Country of qualification", a.QualificationCountry);
-        Q("Completed internship/residency", a.CompletedInternship);
-        Q("Years of clinical experience", a.YearsExperience);
+        Q("What is your healthcare profession?", a.Profession);
+        Q("In which country did you receive your professional qualification?", a.QualificationCountry);
+        Q("Have you completed your internship or residency (if applicable)?", a.CompletedInternship);
+        Q("How many years of clinical experience do you have?", a.YearsExperience);
         sb.AppendLine();
 
         sb.AppendLine("## Current Location");
-        Q("Currently living", a.Location);
-        Q("Province", a.Province);
-        Q("City", a.City);
-        Q("Country", a.Country);
-        Q("Province they plan to practise in", a.TargetProvince);
+        Q("Where are you currently living?", a.Location);
+        if (string.Equals(a.Location, "Canada", StringComparison.OrdinalIgnoreCase))
+        {
+            Q("If Canada: Province", a.Province);
+            Q("If Canada: City", a.City);
+        }
+        else if (string.Equals(a.Location, "Outside Canada", StringComparison.OrdinalIgnoreCase))
+        {
+            Q("If Outside Canada: Country", a.Country);
+        }
+        Q("Which province do you plan to practise in? (POC enhancement)", a.TargetProvince);
         sb.AppendLine();
 
         sb.AppendLine("## Immigration Status");
-        Q("Current immigration status", a.ImmigrationStatus);
-        Q("Planning to immigrate to Canada", a.PlanningToImmigrate);
+        if (string.Equals(a.Location, "Canada", StringComparison.OrdinalIgnoreCase))
+            Q("What is your current immigration status?", a.ImmigrationStatus);
+        else if (string.Equals(a.Location, "Outside Canada", StringComparison.OrdinalIgnoreCase))
+            Q("Are you planning to immigrate to Canada?", a.PlanningToImmigrate);
         sb.AppendLine();
 
         sb.AppendLine("## Licensing Status");
-        Q("Started licensing process", a.LicensingStarted);
-        QList("Licensing exams completed", a.ExamsCompleted);
-        Q("Registered with a Canadian regulatory body", a.RegisteredWithBody);
+        Q("Have you started your licensing process?", a.LicensingStarted);
+        QList("Which licensing exams have you completed?", a.ExamsCompleted);
+        Q("Are you currently registered with any Canadian regulatory body?", a.RegisteredWithBody);
         sb.AppendLine();
 
         sb.AppendLine("## Language Proficiency");
-        Q("Completed an English language test", a.CompletedLanguageTest);
-        Q("Test", a.LanguageTest);
-        Q("Score", a.LanguageScore);
+        Q("Have you completed an English language test?", a.CompletedLanguageTest);
+        if (string.Equals(a.CompletedLanguageTest, "Yes", StringComparison.OrdinalIgnoreCase))
+        {
+            Q("Which test? (if Yes)", a.LanguageTest);
+            Q("Score (if Yes)", a.LanguageScore);
+        }
         sb.AppendLine();
 
         sb.AppendLine("## Career Goals");
-        QList("Primary goals", a.Goals);
+        QList("What is your primary goal?", a.Goals);
         sb.AppendLine();
 
         sb.AppendLine("## Learning Needs");
-        QList("Areas they want support with", a.LearningNeeds);
+        QList("Which areas would you like support with?", a.LearningNeeds);
         sb.AppendLine();
 
         if (!string.IsNullOrWhiteSpace(a.AdditionalInfo))
         {
             sb.AppendLine("## Additional Information");
-            sb.AppendLine(a.AdditionalInfo.Trim());
+            Q("Is there anything else you would like HealthNet to know to better personalise your learning experience?",
+                a.AdditionalInfo.Trim());
             sb.AppendLine();
         }
 

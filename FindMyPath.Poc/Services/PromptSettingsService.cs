@@ -5,7 +5,7 @@ using Microsoft.Extensions.Configuration;
 namespace FindMyPath.Poc.Services;
 
 /// <summary>
-/// Runtime tuning (system instruction, model, reference material) persisted to the project-relative
+/// Runtime tuning (system instruction, model, reference-file mode, effort, and output cap) persisted to the project-relative
 /// <c>app_data/settings.json</c>. Defaults come from code — <see cref="DefaultPrompt.SystemInstruction"/> and
 /// <see cref="ModelCatalog.DefaultModel"/> — not from appsettings.json. The only thing read from configuration
 /// is the API key (Anthropic:ApiKey, or the ANTHROPIC_API_KEY env var); it is never written to app_data.
@@ -22,12 +22,14 @@ public class PromptSettingsService
     private readonly object _lock = new();
     private readonly IConfiguration _config;
     private readonly AppPaths _paths;
+    private readonly ILogger<PromptSettingsService>? _logger;
     private PromptSettings _settings;
 
-    public PromptSettingsService(IConfiguration config, AppPaths paths)
+    public PromptSettingsService(IConfiguration config, AppPaths paths, ILogger<PromptSettingsService>? logger = null)
     {
         _config = config;
         _paths = paths;
+        _logger = logger;
         _settings = Load();
     }
 
@@ -49,15 +51,19 @@ public class PromptSettingsService
 
     public bool HasApiKey => !string.IsNullOrWhiteSpace(ApiKey);
 
-    public void Save(string systemInstruction, string model)
+    public bool Save(string systemInstruction, string model, bool includeKnowledgeBase,
+        string effort, int maxOutputTokens)
     {
         lock (_lock)
         {
             _settings.SystemInstruction = string.IsNullOrWhiteSpace(systemInstruction)
                 ? DefaultSystem()
                 : StripMandatoryFormat(systemInstruction);
-            _settings.Model = string.IsNullOrWhiteSpace(model) ? DefaultModel() : model;
-            Persist();
+            _settings.Model = NormalizeModel(model);
+            _settings.IncludeKnowledgeBase = includeKnowledgeBase;
+            _settings.Effort = GenerationTuningCatalog.NormalizeEffort(effort);
+            _settings.MaxOutputTokens = GenerationTuningCatalog.NormalizeMaxOutputTokens(maxOutputTokens);
+            return Persist();
         }
     }
 
@@ -73,6 +79,11 @@ public class PromptSettingsService
 
     // Defaults are code, not configuration: appsettings.json holds only the API key.
     private static string DefaultModel() => ModelCatalog.DefaultModel;
+
+    private static string NormalizeModel(string? model) =>
+        ModelCatalog.Models.Any(m => string.Equals(m.Id, model, StringComparison.Ordinal))
+            ? model!
+            : DefaultModel();
 
     private static string DefaultSystem() => DefaultPrompt.SystemInstruction;
 
@@ -103,32 +114,47 @@ public class PromptSettingsService
                     s.SystemInstruction = string.IsNullOrWhiteSpace(s.SystemInstruction)
                         ? DefaultSystem()
                         : StripMandatoryFormat(s.SystemInstruction);
-                    if (string.IsNullOrWhiteSpace(s.Model)) s.Model = DefaultModel();
+                    s.Model = NormalizeModel(s.Model);
+                    s.Effort = GenerationTuningCatalog.NormalizeEffort(s.Effort);
+                    s.MaxOutputTokens = GenerationTuningCatalog.NormalizeMaxOutputTokens(s.MaxOutputTokens);
                     return s;
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
+            _logger?.LogWarning(ex, "Could not load prompt settings; using safe defaults.");
             // fall through to code defaults
         }
         return new PromptSettings
         {
             Model = DefaultModel(),
             SystemInstruction = DefaultSystem(),
+            IncludeKnowledgeBase = false,
+            Effort = GenerationTuningCatalog.DefaultEffort,
+            MaxOutputTokens = GenerationTuningCatalog.DefaultMaxOutputTokens,
         };
     }
 
-    private void Persist()
+    private bool Persist()
     {
+        string? temp = null;
         try
         {
             _paths.EnsureDirs();
-            File.WriteAllText(_paths.SettingsFile, JsonSerializer.Serialize(_settings, JsonOpts));
+            temp = $"{_paths.SettingsFile}.{Guid.NewGuid():N}.tmp";
+            File.WriteAllText(temp, JsonSerializer.Serialize(_settings, JsonOpts));
+            File.Move(temp, _paths.SettingsFile, overwrite: true);
+            return true;
         }
-        catch
+        catch (Exception ex)
         {
-            // never crash on save
+            _logger?.LogWarning(ex, "Could not persist prompt settings to {SettingsFile}.", _paths.SettingsFile);
+            if (temp is not null)
+            {
+                try { File.Delete(temp); } catch { /* best effort */ }
+            }
+            return false;
         }
     }
 
@@ -136,5 +162,8 @@ public class PromptSettingsService
     {
         Model = s.Model,
         SystemInstruction = s.SystemInstruction,
+        IncludeKnowledgeBase = s.IncludeKnowledgeBase,
+        Effort = s.Effort,
+        MaxOutputTokens = s.MaxOutputTokens,
     };
 }

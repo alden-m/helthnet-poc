@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using Anthropic;
+using Anthropic.Helpers;
 using Anthropic.Models.Messages;
 using FindMyPath.Poc.Models;
 
@@ -17,17 +18,21 @@ public class RoadmapService
 {
     private readonly PromptSettingsService _settings;
     private readonly KnowledgeBaseService _kb;
+    private readonly ILogger<RoadmapService>? _logger;
 
     // Keep the assembled request well under the Claude API's 32 MB request cap (base64 inflates ~33%).
     private const long AttachmentBase64Budget = 28L * 1024 * 1024;
 
-    public RoadmapService(PromptSettingsService settings, KnowledgeBaseService kb)
+    public RoadmapService(PromptSettingsService settings, KnowledgeBaseService kb,
+        ILogger<RoadmapService>? logger = null)
     {
         _settings = settings;
         _kb = kb;
+        _logger = logger;
     }
 
-    public async Task<RoadmapResult> GenerateAsync(AssessmentAnswers answers, CancellationToken ct = default, bool includeKnowledgeBase = true)
+    public async Task<RoadmapResult> GenerateAsync(AssessmentAnswers answers, CancellationToken ct = default,
+        bool? includeKnowledgeBase = null)
     {
         var req = BuildRequest(answers, includeKnowledgeBase);
         var result = req.NewResult();
@@ -44,13 +49,7 @@ public class RoadmapService
         {
             var client = new AnthropicClient { ApiKey = apiKey };
 
-            var response = await client.Messages.Create(new MessageCreateParams
-            {
-                Model = req.Model,
-                MaxTokens = 16000,
-                System = req.System,
-                Messages = [new() { Role = Role.User, Content = req.Content }],
-            });
+            var response = await client.Messages.Create(CreateParameters(req), ct);
 
             var text = string.Concat(response.Content
                 .Select(b => b.Value)
@@ -63,7 +62,8 @@ public class RoadmapService
                 result.Usage.InputTokens, result.Usage.OutputTokens,
                 result.Usage.CacheReadTokens, result.Usage.CacheWriteTokens);
             result.Roadmap = RoadmapParser.TryParse(text);
-            result.Success = true;
+            result.Success = !string.IsNullOrWhiteSpace(text);
+            if (!result.Success) result.ErrorMessage = "The AI returned an empty response. Please try again.";
             return result;
         }
         catch (OperationCanceledException)
@@ -72,6 +72,7 @@ public class RoadmapService
         }
         catch (Exception ex)
         {
+            _logger?.LogWarning(ex, "Roadmap generation failed for model {Model}.", req.Model);
             result.Success = false;
             result.ErrorMessage = FriendlyError(ex);
             return result;
@@ -83,7 +84,8 @@ public class RoadmapService
     /// Same result shape as GenerateAsync. On any failure it returns a Failed result; the caller can
     /// fall back to the non-streaming path.
     /// </summary>
-    public async Task<RoadmapResult> GenerateStreamingAsync(AssessmentAnswers answers, Action<string> onDelta, CancellationToken ct = default, bool includeKnowledgeBase = true)
+    public async Task<RoadmapResult> GenerateStreamingAsync(AssessmentAnswers answers, Action<string> onDelta,
+        CancellationToken ct = default, bool? includeKnowledgeBase = null)
     {
         var req = BuildRequest(answers, includeKnowledgeBase);
         var result = req.NewResult();
@@ -102,15 +104,9 @@ public class RoadmapService
             var sb = new StringBuilder();
             long inTok = 0, outTok = 0, cacheRead = 0, cacheWrite = 0;
 
-            var parameters = new MessageCreateParams
-            {
-                Model = req.Model,
-                MaxTokens = 16000,
-                System = req.System,
-                Messages = [new() { Role = Role.User, Content = req.Content }],
-            };
+            var parameters = CreateParameters(req);
 
-            await foreach (var ev in client.Messages.CreateStreaming(parameters).WithCancellation(ct))
+            await foreach (var ev in client.Messages.CreateStreaming(parameters, ct).WithCancellation(ct))
             {
                 if (ev.TryPickContentBlockDelta(out var cbd) && cbd.Delta.TryPickText(out var td))
                 {
@@ -141,7 +137,8 @@ public class RoadmapService
             };
             result.CostUsd = ModelCatalog.ComputeCost(req.Model, inTok, outTok, cacheRead, cacheWrite);
             result.Roadmap = RoadmapParser.TryParse(text);
-            result.Success = true;
+            result.Success = !string.IsNullOrWhiteSpace(text);
+            if (!result.Success) result.ErrorMessage = "The AI returned an empty response. Please try again.";
             return result;
         }
         catch (OperationCanceledException)
@@ -150,6 +147,7 @@ public class RoadmapService
         }
         catch (Exception ex)
         {
+            _logger?.LogWarning(ex, "Streaming roadmap generation failed for model {Model}.", req.Model);
             result.Success = false;
             result.ErrorMessage = FriendlyError(ex);
             return result;
@@ -168,6 +166,9 @@ public class RoadmapService
         public required string Model { get; init; }
         public required string System { get; init; }         // includes the hidden JSON-output contract
         public required string EditableSystem { get; init; } // the visible-only instruction, for the snapshot
+        public required string Effort { get; init; }
+        public required int MaxOutputTokens { get; init; }
+        public required bool IncludeKnowledgeBase { get; init; }
         public required List<ContentBlockParam> Content { get; init; }
         public required string UserMessage { get; init; }
         public required List<AttachmentInfo> Attachments { get; init; }
@@ -175,37 +176,71 @@ public class RoadmapService
         public RoadmapResult NewResult() => new()
         {
             Model = Model,
+            Effort = Effort,
+            MaxOutputTokens = MaxOutputTokens,
+            IncludeKnowledgeBase = IncludeKnowledgeBase,
+            QuestionnaireVersion = AssessmentAnswers.QuestionnaireVersion,
+            GeneratedAtUtc = DateTime.UtcNow.ToString("o"),
             SystemInstruction = EditableSystem,
             UserMessage = UserMessage,
             Attachments = Attachments,
         };
     }
 
-    private RequestBuild BuildRequest(AssessmentAnswers answers, bool includeKnowledgeBase)
+    private RequestBuild BuildRequest(AssessmentAnswers answers, bool? includeKnowledgeBase)
     {
         var settings = _settings.Current;
         var model = string.IsNullOrWhiteSpace(settings.Model) ? ModelCatalog.DefaultModel : settings.Model;
+        var effort = GenerationTuningCatalog.NormalizeEffort(settings.Effort);
+        var maxOutputTokens = GenerationTuningCatalog.NormalizeMaxOutputTokens(settings.MaxOutputTokens);
+        var useKnowledgeBase = includeKnowledgeBase ?? settings.IncludeKnowledgeBase;
 
         var editable = (settings.SystemInstruction ?? "").TrimEnd();
-        // Always append the mandatory JSON-output contract, unless a legacy prompt already carries it.
-        var system = editable.Contains("single fenced JSON", StringComparison.OrdinalIgnoreCase)
-            ? editable
-            : $"{editable}\n\n{DefaultPrompt.OutputFormatInstruction}";
+        // Structured outputs enforce the JSON shape; the appended contract controls useful content/length.
+        var system = $"{editable}\n\n{DefaultPrompt.OutputFormatInstruction}";
 
         var userMessage = AssessmentFormatter.ToUserMessage(answers);
 
         var content = new List<ContentBlockParam> { new TextBlockParam(userMessage) };
         var attachments = new List<AttachmentInfo>();
-        if (includeKnowledgeBase) AppendKnowledgeBase(content, attachments);
+        if (useKnowledgeBase) AppendKnowledgeBase(content, attachments);
 
         return new RequestBuild
         {
             Model = model,
             System = system,
             EditableSystem = editable,
+            Effort = effort,
+            MaxOutputTokens = maxOutputTokens,
+            IncludeKnowledgeBase = useKnowledgeBase,
             Content = content,
             UserMessage = userMessage,
             Attachments = attachments,
+        };
+    }
+
+    private static MessageCreateParams CreateParameters(RequestBuild req)
+    {
+        Effort? configuredEffort = null;
+        if (ModelCatalog.Find(req.Model).SupportsEffort &&
+            Enum.TryParse<Effort>(req.Effort, ignoreCase: true, out var parsedEffort))
+        {
+            configuredEffort = parsedEffort;
+        }
+
+        var output = new OutputConfig
+        {
+            Format = StructuredOutput.CreateJsonFormat<RoadmapDto>(),
+            Effort = configuredEffort,
+        };
+
+        return new MessageCreateParams
+        {
+            Model = req.Model,
+            MaxTokens = req.MaxOutputTokens,
+            System = req.System,
+            OutputConfig = output,
+            Messages = [new() { Role = Role.User, Content = req.Content }],
         };
     }
 
